@@ -1,0 +1,75 @@
+@startuml
+' uml-diagrams.org reference style — CSS variant (plantuml.com <style> syntax)
+' Same business scenario as 01_sequence_oauth2.puml, but uses the modern CSS-style
+' preamble instead of skinparam. Both produce the same uml-diagrams.org look.
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+
+title {
+  FontSize 14
+  FontStyle bold
+  FontColor #000000
+  BackGroundColor transparent
+  LineColor transparent
+  LineThickness 0
+}
+
+note {
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  FontColor #000000
+}
+
+sequenceDiagram {
+  actor       { BackGroundColor #FFFFFF; LineColor #000000; FontColor #000000 }
+  participant { BackGroundColor #FFFFFF; LineColor #000000; FontColor #000000 }
+  lifeLine    { BackGroundColor #FFFFFF; LineColor #000000; LineStyle 5-5; LineThickness 0.75 }
+  reference   { BackGroundColor #FFFFFF; LineColor #000000 }
+  group       { BackGroundColor #FFFFFF; LineColor #000000 }
+  arrow       { LineColor #000000; LineThickness 0.75; FontColor #000000 }
+}
+</style>
+
+' These two settings have no CSS equivalent yet — keep as skinparam:
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+
+title OAuth2 Authorization Code Flow
+
+actor "Resource Owner" as User
+participant "Client App" as Client
+participant "Authorization Server" as AuthServer
+participant "Resource Server" as Resource
+
+User -> Client: Access protected resource
+Client -> User: Redirect to /authorize
+User -> AuthServer: GET /authorize (client_id, redirect_uri)
+AuthServer -> User: Login page
+User -> AuthServer: Submit credentials
+AuthServer -> AuthServer: Authenticate user
+AuthServer -> User: Consent screen (scopes)
+User -> AuthServer: Approve scopes
+AuthServer -> Client: Redirect with authorization code
+Client -> AuthServer: POST /token (code, client_secret)
+AuthServer -> AuthServer: Validate code + secret
+AuthServer --> Client: Access Token + Refresh Token
+Client -> Resource: GET /resource (Bearer token)
+Resource -> Resource: Validate token
+Resource --> Client: Protected data
+Client --> User: Display resource
+
+note right of AuthServer
+  Authorization code is
+  single-use, expires in
+  10 minutes
+end note
+@enduml

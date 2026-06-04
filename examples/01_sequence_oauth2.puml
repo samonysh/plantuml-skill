@@ -1,20 +1,45 @@
 @startuml
-' OMG-UML Monochrome Style
-skinparam style strictuml
+' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
 skinparam monochrome true
-skinparam backgroundColor white
+skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica
 skinparam defaultFontSize 12
 skinparam shadowing false
+skinparam style strictuml
 skinparam classAttributeIconSize 0
 skinparam sequenceMessageAlign center
-skinparam ActorBackgroundColor white
-skinparam ParticipantBackgroundColor white
-skinparam NoteBackgroundColor white
-skinparam SequenceGroupBackgroundColor white
-skinparam PackageBackgroundColor white
-skinparam ClassBackgroundColor white
-skinparam StereotypeCBackgroundColor white
+skinparam roundCorner 0
+
+skinparam ActorBackgroundColor #FFFFFF
+skinparam ParticipantBackgroundColor #FFFFFF
+skinparam NoteBackgroundColor #FFFFFF
+skinparam SequenceGroupBackgroundColor #FFFFFF
+skinparam PackageBackgroundColor #FFFFFF
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ObjectBackgroundColor #FFFFFF
+skinparam StateBackgroundColor #FFFFFF
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam NodeBackgroundColor #FFFFFF
+skinparam DatabaseBackgroundColor #FFFFFF
+skinparam StereotypeCBackgroundColor #FFFFFF
+skinparam StereotypeIBackgroundColor #FFFFFF
+skinparam StereotypeABackgroundColor #FFFFFF
+skinparam StereotypeEBackgroundColor #FFFFFF
+
+skinparam SequenceLifeLineBorderColor #000000
+skinparam SequenceLifeLineBackgroundColor #FFFFFF
+skinparam SequenceLifeLineBorderThickness 0.75
+skinparam SequenceActivationBackgroundColor #FFFFFF
+skinparam SequenceActivationBorderColor #000000
+skinparam SequenceArrowColor #000000
+skinparam SequenceArrowThickness 0.75
+skinparam SequenceBoxBackgroundColor #FFFFFF
+
+skinparam ArrowColor #000000
+skinparam ArrowThickness 0.75
+skinparam DefaultTextColor #000000
 
 title OAuth2 Authorization Code Flow
 

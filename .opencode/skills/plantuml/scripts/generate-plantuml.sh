@@ -6,11 +6,12 @@
 #
 # Defaults: output_dir=./output, format=svg
 #
-# Conversion methods (tried in order):
-#   1. PlantUML public server (plantuml.com)
-#   2. Docker (plantuml/plantuml image)
-#   3. Local plantuml.jar if present
+# Conversion methods (tried in strict priority order):
+#   1. PlantUML public server (plantuml.com)   ← PREFERRED default backend
+#   2. Docker (plantuml/plantuml image)        ← fallback when public server unreachable
+#   3. Local plantuml.jar if present           ← last-resort offline fallback
 #
+# Cross-platform: works on Linux, macOS, and Windows (Git Bash / MSYS2 / WSL / Cygwin).
 set -euo pipefail
 
 INPUT=""
@@ -72,9 +73,38 @@ case "$FORMAT" in
         ;;
 esac
 
+# Portable temp dir (Linux/macOS: /tmp; Windows Git-Bash/MSYS: $TMPDIR or $TEMP)
+PORTABLE_TMP="${TMPDIR:-${TEMP:-${TMP:-/tmp}}}"
+
+# Portable binary-file sniffer: prefer `file` if present, otherwise read magic bytes
+detect_binary_ok() {
+    local path="$1"
+    local fmt="$2"
+    [[ -s "$path" ]] || return 1
+
+    if command -v file &>/dev/null; then
+        file "$path" | grep -qiE 'png|pdf|image' && return 0
+    fi
+
+    # Fallback: check magic bytes with `od` (available on Linux, macOS, and Git Bash)
+    if command -v od &>/dev/null; then
+        local magic
+        magic=$(od -An -N4 -tx1 "$path" 2>/dev/null | tr -d ' \n')
+        case "$fmt" in
+            png) [[ "$magic" == "89504e47" ]] && return 0 ;;
+            pdf) [[ "$magic" == "25504446" ]] && return 0 ;;  # %PDF
+        esac
+    fi
+
+    # Last resort: assume non-empty file is valid
+    return 0
+}
+
 echo "🖼️  Converting $INPUT → $OUTPUT_FILE (format: $FORMAT)"
 
-# ─── Method 1: PlantUML Public Server ────────────────────────────────────────
+# ─── Method 1: PlantUML Public Server (PREFERRED) ───────────────────────────
+# Always tried first — fast, no local dependency, produces canonical PlantUML output.
+# Falls back to Docker / local JAR only when the public server cannot be reached.
 convert_via_server() {
     local server_url
     case "$FORMAT" in
@@ -84,20 +114,27 @@ convert_via_server() {
         txt) server_url="https://www.plantuml.com/plantuml/txt" ;;
     esac
 
-    echo "  → Trying PlantUML public server..."
-    if curl -sSf -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$INPUT" 2>/dev/null; then
+    if ! command -v curl &>/dev/null; then
+        echo "  → curl not available, skipping public server"
+        return 1
+    fi
+
+    echo "  → Trying PlantUML public server (preferred)..."
+    # Short connect timeout + bounded total time so an unreachable server falls back quickly.
+    if curl -sSf --connect-timeout 5 --max-time 30 \
+            -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$INPUT" 2>/dev/null; then
         if [[ "$FORMAT" == "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && head -1 "$OUTPUT_FILE" | grep -q '<svg'; then
-            echo "  ✓ Success (public server)"
-            return 0
-        elif [[ "$FORMAT" != "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && file "$OUTPUT_FILE" | grep -qiE 'png|pdf|image'; then
             echo "  ✓ Success (public server)"
             return 0
         elif [[ "$FORMAT" == "txt" ]] && [[ -s "$OUTPUT_FILE" ]]; then
             echo "  ✓ Success (public server)"
             return 0
+        elif [[ "$FORMAT" != "svg" && "$FORMAT" != "txt" ]] && detect_binary_ok "$OUTPUT_FILE" "$FORMAT"; then
+            echo "  ✓ Success (public server)"
+            return 0
         fi
     fi
-    echo "  ✗ Public server failed"
+    echo "  ✗ Public server failed (will fall back to Docker, then local JAR)"
     rm -f "$OUTPUT_FILE"
     return 1
 }
@@ -113,12 +150,21 @@ convert_via_docker() {
     local ext="$FORMAT"
     [[ "$FORMAT" == "txt" ]] && ext="utxt"
 
-    # Docker outputs to the same filename but with new extension in same dir
-    local docker_tmp="/tmp/plantuml_docker_$$"
+    # Portable temporary working directory
+    local docker_tmp="${PORTABLE_TMP}/plantuml_docker_$$"
     mkdir -p "$docker_tmp"
     cp "$INPUT" "$docker_tmp/"
 
-    if docker run --rm -v "$docker_tmp:/data" plantuml/plantuml:latest \
+    # On Windows Git-Bash/MSYS the path passed to `docker -v` must be converted.
+    # `cygpath -w` (Cygwin/MSYS) or `wslpath -w` (WSL) handle this when available.
+    local docker_mount="$docker_tmp"
+    if command -v cygpath &>/dev/null; then
+        docker_mount=$(cygpath -w "$docker_tmp")
+    elif command -v wslpath &>/dev/null; then
+        docker_mount=$(wslpath -w "$docker_tmp" 2>/dev/null || echo "$docker_tmp")
+    fi
+
+    if MSYS_NO_PATHCONV=1 docker run --rm -v "${docker_mount}:/data" plantuml/plantuml:latest \
         "-t$ext" "/data/$(basename "$INPUT")" 2>/dev/null; then
 
         local generated
@@ -139,11 +185,16 @@ convert_via_docker() {
 convert_via_local() {
     local jar_paths=(
         "/usr/local/bin/plantuml.jar"
-        "$HOME/plantuml.jar"
+        "/usr/share/plantuml/plantuml.jar"
+        "${HOME:-}/plantuml.jar"
+        "${USERPROFILE:-}/plantuml.jar"
+        "${PROGRAMFILES:-}/PlantUML/plantuml.jar"
+        "${LOCALAPPDATA:-}/PlantUML/plantuml.jar"
         "./plantuml.jar"
     )
     local jar=""
     for p in "${jar_paths[@]}"; do
+        [[ -z "$p" ]] && continue
         if [[ -f "$p" ]]; then
             jar="$p"
             break

@@ -1,13 +1,17 @@
 # PlantUML Skill for OpenCode
 
-Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://github.com/voidzero-dev/opencode) skill that generates OMG-UML compliant diagrams from plain English descriptions.
+**English** · [简体中文](README.zh-CN.md)
+
+Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://github.com/voidzero-dev/opencode) skill that generates [uml-diagrams.org](https://www.uml-diagrams.org)-style (strict OMG UML 2.x, monochrome) diagrams from plain English descriptions.
 
 ## Features
 
 - **6+ diagram types**: Sequence, Class, Activity, Use Case, Component, State, and more
 - **Natural language input**: Describe what you want — the skill picks the right diagram type
-- **OMG-UML strict style**: Pure black-and-white, no decorative icons, standard UML notation
-- **Multiple render backends**: PlantUML public server → Docker → local JAR (auto-fallback)
+- **uml-diagrams.org reference style**: Pure black-and-white, dashed lifelines, white activation bars, text stereotypes — matches every figure on https://www.uml-diagrams.org
+- **Two equivalent preambles**: classic `skinparam` (max backward compatibility) and modern CSS `<style>` block (recommended on PlantUML ≥ 1.2019.9)
+- **Cross-platform render scripts**: Bash (Linux/macOS/Git-Bash/WSL) and PowerShell (Windows native)
+- **Multiple render backends** in strict priority order: PlantUML public server → Docker → local JAR (auto-fallback)
 - **Text-based stereotypes**: `«interface»` and `«abstract»` instead of circle-with-letter icons
 - **Zero color**: Monochrome output suitable for academic papers, RFCs, and technical docs
 
@@ -56,13 +60,21 @@ The skill will:
 
 ### Manual rendering
 
-You can also render `.puml` files directly:
+You can also render `.puml` files directly. The skill ships with both a Bash and a PowerShell entry point, so it works on **Linux, macOS, and Windows**:
+
+**Linux / macOS / Git Bash / WSL:**
 
 ```bash
 bash scripts/generate-plantuml.sh input.puml output_dir --format svg
 ```
 
-Options: `--format svg|png|pdf|txt` (default: `svg`)
+**Windows PowerShell:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\generate-plantuml.ps1 input.puml output_dir -Format svg
+```
+
+Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Format` instead of `--format`.
 
 ## Supported Diagram Types
 
@@ -80,23 +92,42 @@ Options: `--format svg|png|pdf|txt` (default: `svg`)
 
 ## Style Standard
 
-All generated diagrams follow **OMG-UML strict black-and-white** conventions:
+All generated diagrams follow the **uml-diagrams.org reference style** — strict OMG UML 2.x
+black-and-white rendered with Visio UML 2.x stencils (the same style used on
+https://www.uml-diagrams.org):
 
 ```
+' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
 skinparam style strictuml
 skinparam monochrome true
-skinparam backgroundColor white
+skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica
 skinparam shadowing false
 skinparam classAttributeIconSize 0
+skinparam roundCorner 0
+skinparam SequenceLifeLineBorderColor #000000
+skinparam SequenceActivationBackgroundColor #FFFFFF
 ```
 
-Key rules:
+Key rules (mapped to uml-diagrams.org figures):
 - **No circle stereotype icons** — `«interface»` / `«abstract»` rendered as text, not Ⓒ/Ⓘ/Ⓐ circles
+- **Abstract classifiers in italics** — matches UML 2.5 §9 and uml-diagrams.org
 - **No color** — only `#000000` and `#FFFFFF`
 - **No 3D shadows**
 - **No attribute visibility circles** (●/◐/○) — uses `+`/`-`/`#` text markers
+- **Dashed lifelines** — per uml-diagrams.org sequence diagram figures
+- **White activation bars with black border** — per the execution specification definition
+- **Thin uniform hair-line strokes** (≈0.75pt borders/arrows)
 - **Standard UML notation** — stick figures, dashed dependencies, dotted lifelines
+
+### Alternative — CSS `<style>` preamble
+
+PlantUML 1.2019.9+ recommends the CSS-like `<style>` block instead of `skinparam`
+([plantuml.com/style-evolution](https://plantuml.com/style-evolution)). The skill ships
+a **second, visually equivalent preamble** based on `<style>` for users on modern
+PlantUML versions. See the `Alternative — CSS-style Preamble` section in
+[`skill.md`](.opencode/skills/plantuml/skill.md) and the reference example
+[`examples/07_sequence_oauth2_css_style.puml`](examples/07_sequence_oauth2_css_style.puml).
 
 ## Examples
 
@@ -124,10 +155,33 @@ Key rules:
 
 ![Ticket States](examples/06_state_ticket.svg)
 
-All example source files (`.puml`) are in the [`examples/`](examples/) directory. You can regenerate them with:
+### Sequence Diagram — OAuth2 Flow (CSS-style preamble, alternative)
+
+Same business scenario as example #1, but uses the modern **CSS `<style>` block**
+recommended by [plantuml.com/style-evolution](https://plantuml.com/style-evolution)
+instead of `skinparam`. Both preambles produce the same uml-diagrams.org look — use the
+CSS variant on PlantUML ≥ 1.2019.9 where `skinparam` is being phased out.
+
+![OAuth2 Sequence — CSS variant](examples/07_sequence_oauth2_css_style.svg)
+
+All example source files (`.puml`) are in the [`examples/`](examples/) directory. They all use the **uml-diagrams.org reference style** preamble (example #07 uses the alternative CSS variant). You can regenerate any single one:
 
 ```bash
 bash scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
+```
+
+Or regenerate all of them at once:
+
+```bash
+# Bash
+for f in examples/*.puml; do bash scripts/generate-plantuml.sh "$f" examples --format svg; done
+```
+
+```powershell
+# PowerShell
+Get-ChildItem examples\*.puml | ForEach-Object {
+    powershell -ExecutionPolicy Bypass -File scripts\generate-plantuml.ps1 $_.FullName examples -Format svg
+}
 ```
 
 ## Project Structure
@@ -139,7 +193,8 @@ plantuml-skill/
 │       └── plantuml/
 │           ├── skill.md                    # Skill definition & instructions
 │           ├── scripts/
-│           │   └── generate-plantuml.sh    # Render script (3 backends)
+│           │   ├── generate-plantuml.sh    # Render script — Linux/macOS/Git-Bash/WSL
+│           │   └── generate-plantuml.ps1   # Render script — Windows PowerShell
 │           └── references/                 # (extensible)
 ├── examples/
 │   ├── 01_sequence_oauth2.puml / .svg
@@ -147,28 +202,44 @@ plantuml-skill/
 │   ├── 03_activity_refund.puml / .svg
 │   ├── 04_usecase_cms.puml / .svg
 │   ├── 05_component_microservices.puml / .svg
-│   └── 06_state_ticket.puml / .svg
+│   ├── 06_state_ticket.puml / .svg
+│   └── 07_sequence_oauth2_css_style.puml / .svg   # CSS-style preamble (alternative)
 ├── .gitignore
-└── README.md
+├── README.md           # English README
+└── README.zh-CN.md     # 简体中文 README
 ```
 
 ## Render Script
 
-`scripts/generate-plantuml.sh` tries three backends in order:
+The skill ships with two equivalent entry points so it runs on every major OS:
 
-1. **PlantUML public server** (`https://www.plantuml.com/plantuml`) — requires internet
-2. **Docker** (`plantuml/plantuml:latest`) — requires Docker
-3. **Local JAR** (`plantuml.jar`) — requires Java and the JAR in PATH
+- `scripts/generate-plantuml.sh` — Bash (Linux, macOS, Git Bash, MSYS2, WSL, Cygwin)
+- `scripts/generate-plantuml.ps1` — PowerShell (native Windows)
+
+Both try three backends in **strict priority order** — the public server is preferred,
+Docker and the local JAR are only used when the server is unreachable:
+
+1. **PlantUML public server** (`https://www.plantuml.com/plantuml`) — **preferred default**, requires internet
+2. **Docker** (`plantuml/plantuml:latest`) — automatic fallback when the public server fails
+3. **Local JAR** (`plantuml.jar`) — last-resort offline fallback (requires Java)
 
 ```bash
-# SVG (default)
+# SVG (default) — Bash
 bash generate-plantuml.sh diagram.puml ./output
 
-# PNG
+# PNG — Bash
 bash generate-plantuml.sh diagram.puml ./output --format png
 
-# ASCII art (no rendering needed — txt format skips image generation)
+# ASCII art — Bash (txt format skips image rendering)
 bash generate-plantuml.sh diagram.puml ./output --format txt
+```
+
+```powershell
+# SVG (default) — PowerShell
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output
+
+# PNG — PowerShell
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -Format png
 ```
 
 ## License
