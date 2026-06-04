@@ -1,6 +1,9 @@
 # Generated output
 output/
 
+# Release artifacts (built locally, distributed via GitHub Releases)
+dist/
+
 # System files
 .DS_Store
 Thumbs.db
