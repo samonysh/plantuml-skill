@@ -1,10 +1,20 @@
 ---
 name: plantuml
-description: |
-  Generate PlantUML diagrams from natural language requirements. Converts text descriptions
-  into PlantUML source code and renders to SVG, PNG, or PDF. Supports all PlantUML diagram
-  types: sequence, class, activity, use case, component, deployment, state, object, Gantt,
-  mind map, timing, network, and more.
+description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
+version: 1.1.1
+emoji: "📐"
+homepage: https://github.com/samonysh/plantuml-skill
+metadata:
+  openclaw:
+    # The render script tries three backends in strict priority order — public server,
+    # then Docker, then local plantuml.jar — so any ONE of these binaries is sufficient.
+    requires:
+      anyBins:
+        - curl
+        - docker
+        - java
+    # This skill reads no environment variables and writes no secrets; nothing to
+    # declare under primaryEnv / envVars / requires.env.
 ---
 
 # PlantUML Diagram Generator
