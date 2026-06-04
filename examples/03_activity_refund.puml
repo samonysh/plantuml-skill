@@ -1,0 +1,74 @@
+@startuml
+' OMG-UML Monochrome Style
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam ActorBackgroundColor white
+skinparam ParticipantBackgroundColor white
+skinparam NoteBackgroundColor white
+skinparam SequenceGroupBackgroundColor white
+skinparam PackageBackgroundColor white
+skinparam ClassBackgroundColor white
+skinparam StereotypeCBackgroundColor white
+
+title Refund Approval Workflow
+
+|Customer|
+start
+:Submit refund request;
+:Upload receipt;
+
+|System|
+:Validate order eligibility;
+if (Within 30 days?) then (no)
+    :Reject request;
+    |Customer|
+    :Receive rejection notice;
+    stop
+else (yes)
+    if (Amount < $100?) then (yes)
+        :Auto-approve;
+    else (no)
+        |Manager|
+        :Review refund case;
+        if (Approved?) then (yes)
+            :Authorize refund;
+        else (no)
+            :Request more info;
+            |Customer|
+            :Provide additional documents;
+            |Manager|
+            :Re-review case;
+            if (Approved?) then (yes)
+                :Authorize refund;
+            else (no)
+                :Final reject;
+                |Customer|
+                :Receive rejection;
+                stop
+            endif
+        endif
+    endif
+endif
+
+|Payment Gateway|
+:Process refund;
+if (Refund successful?) then (yes)
+    :Credit original payment method;
+    |Customer|
+    :Receive refund confirmation;
+else (no)
+    :Log failure;
+    |System|
+    :Notify support team;
+    |Customer|
+    :Notify: manual refund pending;
+endif
+
+stop
+@enduml

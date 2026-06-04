@@ -1,0 +1,60 @@
+@startuml
+' OMG-UML Monochrome Style
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam ActorBackgroundColor white
+skinparam ParticipantBackgroundColor white
+skinparam NoteBackgroundColor white
+skinparam SequenceGroupBackgroundColor white
+skinparam PackageBackgroundColor white
+skinparam ClassBackgroundColor white
+skinparam StereotypeCBackgroundColor white
+
+title Content Management System
+
+left to right direction
+
+actor Author
+actor Editor
+actor Admin
+actor "Site Visitor" as Visitor
+
+rectangle "CMS" {
+    usecase "Create Article" as UC1
+    usecase "Edit Article" as UC2
+    usecase "Upload Media" as UC3
+    usecase "Review Content" as UC4
+    usecase "Publish Article" as UC5
+    usecase "Manage Categories" as UC6
+    usecase "Manage Users" as UC7
+    usecase "View Analytics" as UC8
+    usecase "Browse Articles" as UC9
+    usecase "Search Content" as UC10
+}
+
+Author --> UC1
+Author --> UC2
+Author --> UC3
+
+Editor --> UC4
+Editor --> UC5
+Editor --> UC6
+Editor --> UC8
+
+Admin --> UC7
+Admin --> UC8
+
+Visitor --> UC9
+Visitor --> UC10
+
+UC4 ..> UC2 : <<include>>
+UC5 ..> UC4 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC9 ..> UC10 : <<extend>>
+@enduml

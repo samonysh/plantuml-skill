@@ -1,0 +1,80 @@
+@startuml
+' OMG-UML Monochrome Style
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam ActorBackgroundColor white
+skinparam ParticipantBackgroundColor white
+skinparam NoteBackgroundColor white
+skinparam SequenceGroupBackgroundColor white
+skinparam PackageBackgroundColor white
+skinparam ClassBackgroundColor white
+skinparam StereotypeCBackgroundColor white
+
+title E-Commerce Microservice Architecture
+
+actor Customer
+actor Admin
+
+package "API Gateway" {
+    [Rate Limiter]
+    [Auth Filter]
+    [Router]
+}
+
+package "Core Services" {
+    [Product Service]
+    [Order Service]
+    [Payment Service]
+    [User Service]
+    [Inventory Service]
+}
+
+package "Supporting Services" {
+    [Notification Service]
+    [Search Service]
+    [Analytics Service]
+}
+
+package "Infrastructure" {
+    database "PostgreSQL\n(Primary)" as DB
+    database "Redis\n(Cache)" as Cache
+    cloud "RabbitMQ\n(Message Queue)" as MQ
+    cloud "Elasticsearch\n(Search Engine)" as ES
+    cloud "S3\n(Media Storage)" as S3
+}
+
+Customer --> [Router]
+Admin --> [Router]
+
+[Router] --> [Auth Filter]
+[Auth Filter] --> [Rate Limiter]
+
+[Rate Limiter] --> [Product Service]
+[Rate Limiter] --> [Order Service]
+[Rate Limiter] --> [Payment Service]
+[Rate Limiter] --> [User Service]
+
+[Order Service] --> [Payment Service] : processPayment()
+[Order Service] --> [Inventory Service] : reserveStock()
+[Payment Service] --> [Notification Service] : sendReceipt()
+[Inventory Service] --> [Notification Service] : lowStockAlert()
+
+[User Service] --> DB
+[Order Service] --> DB
+[Product Service] --> DB
+
+[Product Service] --> Cache : cacheProduct
+[Search Service] --> ES : indexProduct
+[Product Service] --> MQ : productUpdated
+[Search Service] --> MQ : consumeUpdate
+[Notification Service] --> MQ : consumeEvent
+
+[Analytics Service] --> DB : aggregate
+[Product Service] --> S3 : uploadImage
+@enduml

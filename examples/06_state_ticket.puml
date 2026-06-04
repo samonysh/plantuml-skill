@@ -1,0 +1,56 @@
+@startuml
+' OMG-UML Monochrome Style
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam ActorBackgroundColor white
+skinparam ParticipantBackgroundColor white
+skinparam NoteBackgroundColor white
+skinparam SequenceGroupBackgroundColor white
+skinparam PackageBackgroundColor white
+skinparam ClassBackgroundColor white
+skinparam StereotypeCBackgroundColor white
+
+title Support Ticket Lifecycle
+
+[*] --> New
+
+New --> Assigned : agent picks up
+New --> Cancelled : customer cancels
+
+Assigned --> InProgress : agent starts work
+Assigned --> Reassigned : escalated
+Reassigned --> InProgress : new agent starts
+
+state InProgress {
+    [*] --> Investigating
+    Investigating --> Reproducing : identified steps
+    Reproducing --> Fixing : root cause found
+    Fixing --> Testing : fix applied
+    Testing --> Investigating : test failed
+    Testing --> [*] : test passed
+}
+
+InProgress --> PendingCustomer : needs customer input
+PendingCustomer --> InProgress : customer responds
+PendingCustomer --> Resolved : auto-resolve timeout (72h)
+
+InProgress --> Resolved : fix deployed
+
+Resolved --> Closed : customer confirms
+Resolved --> InProgress : customer disputes (reopen)
+
+Cancelled --> [*]
+Closed --> [*]
+
+note right of PendingCustomer
+  System auto-resolves if
+  customer does not respond
+  within 72 hours
+end note
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+' OMG-UML Monochrome Style
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam ActorBackgroundColor white
+skinparam ParticipantBackgroundColor white
+skinparam NoteBackgroundColor white
+skinparam SequenceGroupBackgroundColor white
+skinparam PackageBackgroundColor white
+skinparam ClassBackgroundColor white
+skinparam StereotypeCBackgroundColor white
+
+title OAuth2 Authorization Code Flow
+
+actor "Resource Owner" as User
+participant "Client App" as Client
+participant "Authorization Server" as AuthServer
+participant "Resource Server" as Resource
+
+User -> Client: Access protected resource
+Client -> User: Redirect to /authorize
+User -> AuthServer: GET /authorize (client_id, redirect_uri)
+AuthServer -> User: Login page
+User -> AuthServer: Submit credentials
+AuthServer -> AuthServer: Authenticate user
+AuthServer -> User: Consent screen (scopes)
+User -> AuthServer: Approve scopes
+AuthServer -> Client: Redirect with authorization code
+Client -> AuthServer: POST /token (code, client_secret)
+AuthServer -> AuthServer: Validate code + secret
+AuthServer --> Client: Access Token + Refresh Token
+Client -> Resource: GET /resource (Bearer token)
+Resource -> Resource: Validate token
+Resource --> Client: Protected data
+Client --> User: Display resource
+
+note right of AuthServer
+  Authorization code is
+  single-use, expires in
+  10 minutes
+end note
+@enduml
