@@ -1,0 +1,30 @@
+{
+  "name": "plantuml-skill",
+  "version": "1.1.1",
+  "description": "Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF.",
+  "author": "Samon Yu",
+  "license": "MIT-0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samonysh/plantuml-skill"
+  },
+  "homepage": "https://github.com/samonysh/plantuml-skill",
+  "keywords": [
+    "plantuml",
+    "uml",
+    "diagram",
+    "opencode",
+    "skill",
+    "clawhub"
+  ],
+  "files": [
+    ".opencode/skills/plantuml/"
+  ],
+  "scripts": {
+    "render": "bash .opencode/skills/plantuml/scripts/generate-plantuml.sh",
+    "render:ps": "powershell -ExecutionPolicy Bypass -File .opencode/skills/plantuml/scripts/generate-plantuml.ps1"
+  },
+  "engines": {
+    "opencode": ">=1.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+# Generated diagram outputs (excluded from ClawHub publish)
+output/
+
+# Development artifacts
+.opencode/node_modules/
+dist/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~

@@ -46,7 +46,8 @@ No exceptions unless the user explicitly requests otherwise.
 - **No circle stereotype icons**: Class and interface headers MUST NOT show circle-with-letter icons (Ⓒ / Ⓘ / Ⓐ / Ⓔ). `skinparam style strictuml` enforces text stereotypes (`«interface»`, `«abstract»`, `«enumeration»`). Always declare interfaces/abstract classes via `class <<interface>>` or `class <<abstract>>` — never use the `interface` or `abstract class` keywords.
 - **Abstract classifiers in italics**: Per UML 2.5 §9 and uml-diagrams.org "Name of an abstract classifier is shown in italics" — using the `<<abstract>>` text stereotype with `strictuml` produces the correct italic rendering automatically.
 - **No 3D effects**: Drop shadows MUST be disabled (`skinparam shadowing false`).
-- **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles.
+- **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles. When CJK characters are present, use `--cjk` flag to switch to a CJK-compatible font (see [CJK Font Support](#cjk-chinesejapanesekorean-font-support)).
+- **Aspect ratio**: Generated diagrams are automatically validated for extreme aspect ratios. If a diagram is excessively wide or tall (exceeding 2.5:1 by default), the renderer applies layout corrections and re-renders. Use `--no-fix` to disable this behavior (see Step 3).
 - **Standard UML shapes**:
   - Actors are **stick figures** (never Visio icons or images).
   - Classes / components / nodes are plain rectangles; activities are round-cornered rectangles with the activity name in the upper-left.
@@ -136,6 +137,37 @@ are only used as fallbacks when the server is unreachable:
 1. **PlantUML public server** (https://www.plantuml.com/plantuml) — preferred, requires internet
 2. Docker (requires `docker pull plantuml/plantuml:latest`) — fallback
 3. Local `plantuml.jar` (requires Java) — last-resort offline fallback
+
+**CJK font support**: When the `.puml` contains Chinese, Japanese, or Korean characters, add the `--cjk` flag:
+
+```bash
+bash generate-plantuml.sh diagram.puml ./output --format svg --cjk
+```
+
+The `--cjk` flag:
+- Replaces `Helvetica` with `WenQuanYi Micro Hei` (a CJK-compatible font)
+- For Docker: mounts host font directories (`/usr/share/fonts`, `/usr/local/share/fonts`) into the container and refreshes the font cache before rendering
+- For local JAR: uses system-installed CJK fonts
+- If CJK fonts are not installed on the system, characters will not render correctly. Install them via:
+  - Debian/Ubuntu: `sudo apt install fonts-wqy-zenhei`
+  - Fedora: `sudo dnf install wqy-zenhei-fonts`
+  - macOS: CJK fonts are pre-installed (PingFang SC)
+
+**Aspect ratio validation**: After rendering (SVG or PNG), the script automatically checks the image dimensions. If the aspect ratio exceeds `--max-aspect` (default: 2.5:1), the script applies corrective layout directives and re-renders:
+
+- **Too tall**: Applies `left to right direction` and reduces sequence diagram padding
+- **Too wide**: Applies `top to bottom direction`, removes left-to-right direction, and applies `scale 0.8`
+- Maximum 2 correction attempts before giving up
+
+To disable automatic correction:
+```bash
+bash generate-plantuml.sh diagram.puml ./output --no-fix
+```
+
+To set a custom aspect ratio threshold:
+```bash
+bash generate-plantuml.sh diagram.puml ./output --max-aspect 3.0
+```
 
 **After rendering, show the user the output.** If SVG is generated, read and display it inline.
 If PNG/PDF is generated, tell the user where the file is saved.
@@ -634,6 +666,34 @@ skinparam classAttributeIconSize 0
 - One example file ships with the CSS preamble: [`examples/07_sequence_oauth2_css_style.puml`](../../../examples/07_sequence_oauth2_css_style.puml).
   All other example files keep the `skinparam` preamble for backward compatibility.
 
+### CJK (Chinese/Japanese/Korean) Font Support
+
+When diagrams contain CJK characters, `Helvetica` cannot render them — characters will appear as empty boxes (□) or tofu (▯).
+
+**In `.puml` files**: Replace `skinparam defaultFontName Helvetica` with a CJK-compatible font:
+```
+skinparam defaultFontName "WenQuanYi Micro Hei"
+```
+
+**When rendering**: Use the `--cjk` flag, which automatically applies the font substitution and configures Docker font mounting if needed:
+```bash
+bash generate-plantuml.sh diagram.puml ./output --cjk
+```
+
+**Host prerequisites** for CJK rendering:
+- **Docker method**: CJK fonts must exist on the host at `/usr/share/fonts` (or `/usr/local/share/fonts`, `/System/Library/Fonts`). The script mounts these into the container.
+- **Local JAR method**: CJK fonts must be installed system-wide (Java uses system fontconfig).
+- **Public server method**: The server handles font rendering automatically.
+
+Common CJK font packages:
+| OS | Package |
+|---|---|
+| Debian/Ubuntu | `fonts-wqy-zenhei` |
+| Fedora/RHEL | `wqy-zenhei-fonts` |
+| Arch | `wqy-zenhei` |
+| Alpine | `font-wqy-zenhei` |
+| macOS | Built-in (PingFang SC / Hiragino Sans) |
+
 ---
 
 ## Error Recovery
@@ -645,6 +705,19 @@ If the PlantUML server returns an error:
 4. Try the Docker fallback: `docker pull plantuml/plantuml:latest && bash generate-plantuml.sh ...`
 5. If all else fails, offer to install Java + plantuml.jar
 
+If CJK characters render as empty boxes (□):
+1. Ensure the `--cjk` flag was passed when rendering
+2. Verify CJK fonts are installed on the host: `fc-list :lang=zh`
+3. If using Docker, check that font directories are mounted (the script handles this automatically with `--cjk`)
+
+If aspect ratio warnings appear:
+1. The script applies up to 2 automatic corrections (direction toggle + scale)
+2. If warnings persist, manually adjust the `.puml`:
+   - For too-wide diagrams: add `top to bottom direction` and reduce `skinparam BoxPadding`
+   - For too-tall diagrams: add `left to right direction` and reduce `skinparam ParticipantPadding`
+   - Try `scale 0.75` or `scale 0.5` for extreme cases
+3. For sequence diagrams with many participants: consider splitting into multiple diagrams or abbreviating participant names
+
 ---
 
 ## Output Expectations
@@ -653,4 +726,5 @@ After successful generation:
 1. Show the generated PlantUML source (collapsed if long)
 2. Show the rendered output (SVG inline if possible)
 3. Report the saved file paths for both `.puml` and the rendered image
-4. Offer to make adjustments
+4. Note any aspect ratio corrections that were applied (with dimensions before/after)
+5. Offer to make adjustments

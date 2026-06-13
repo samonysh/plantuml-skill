@@ -4,6 +4,11 @@
 
 Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://github.com/voidzero-dev/opencode) skill that generates [uml-diagrams.org](https://www.uml-diagrams.org)-style (strict OMG UML 2.x, monochrome) diagrams from plain English descriptions.
 
+[![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.1.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
+
 ## Features
 
 - **6+ diagram types**: Sequence, Class, Activity, Use Case, Component, State, and more
@@ -14,6 +19,8 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 - **Multiple render backends** in strict priority order: PlantUML public server → Docker → local JAR (auto-fallback)
 - **Text-based stereotypes**: `«interface»` and `«abstract»` instead of circle-with-letter icons
 - **Zero color**: Monochrome output suitable for academic papers, RFCs, and technical docs
+- **CJK font support**: Chinese/Japanese/Korean character rendering via `--cjk` flag
+- **Aspect ratio auto-correction**: Detects and fixes excessively wide or tall diagrams
 
 ## Prerequisites
 
@@ -27,7 +34,25 @@ At least one of:
 
 Docker is recommended and used by default.
 
+**CJK (Chinese/Japanese/Korean) rendering** requires CJK fonts on the host system when using `--cjk`:
+```bash
+# Debian/Ubuntu
+sudo apt install fonts-wqy-zenhei
+# Fedora
+sudo dnf install wqy-zenhei-fonts
+# Arch
+sudo pacman -S wqy-zenhei
+```
+
 ## Installation
+
+### Via ClawHub (recommended)
+
+```bash
+openclaw skills install plantuml-skill
+```
+
+### Manual Install
 
 ```bash
 git clone https://github.com/samonysh/plantuml-skill.git
@@ -75,6 +100,13 @@ powershell -ExecutionPolicy Bypass -File scripts\generate-plantuml.ps1 input.pum
 ```
 
 Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Format` instead of `--format`.
+
+| Flag | Description | Default |
+|---|---|---|
+| `--format svg\|png\|pdf\|txt` | Output format | `svg` |
+| `--cjk` | Enable CJK font support | off (auto-detects) |
+| `--no-fix` | Disable aspect ratio auto-correction | off (auto-fix enabled) |
+| `--max-aspect N` | Max aspect ratio threshold | `2.5` |
 
 ## Supported Diagram Types
 
@@ -126,7 +158,7 @@ PlantUML 1.2019.9+ recommends the CSS-like `<style>` block instead of `skinparam
 ([plantuml.com/style-evolution](https://plantuml.com/style-evolution)). The skill ships
 a **second, visually equivalent preamble** based on `<style>` for users on modern
 PlantUML versions. See the `Alternative — CSS-style Preamble` section in
-[`skill.md`](.opencode/skills/plantuml/skill.md) and the reference example
+[`SKILL.md`](.opencode/skills/plantuml/SKILL.md) and the reference example
 [`examples/07_sequence_oauth2_css_style.puml`](examples/07_sequence_oauth2_css_style.puml).
 
 ## Examples
@@ -191,7 +223,7 @@ plantuml-skill/
 ├── .opencode/
 │   └── skills/
 │       └── plantuml/
-│           ├── skill.md                    # Skill definition & instructions
+│           ├── SKILL.md                    # Skill definition & instructions
 │           ├── scripts/
 │           │   ├── generate-plantuml.sh    # Render script — Linux/macOS/Git-Bash/WSL
 │           │   └── generate-plantuml.ps1   # Render script — Windows PowerShell
@@ -230,8 +262,17 @@ bash generate-plantuml.sh diagram.puml ./output
 # PNG — Bash
 bash generate-plantuml.sh diagram.puml ./output --format png
 
+# SVG with CJK font support
+bash generate-plantuml.sh diagram.puml ./output --cjk
+
+# PNG, with custom aspect ratio threshold
+bash generate-plantuml.sh diagram.puml ./output --format png --max-aspect 3.0
+
 # ASCII art — Bash (txt format skips image rendering)
 bash generate-plantuml.sh diagram.puml ./output --format txt
+
+# Disable aspect ratio auto-correction
+bash generate-plantuml.sh diagram.puml ./output --no-fix
 ```
 
 ```powershell
@@ -241,6 +282,26 @@ powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\ou
 # PNG — PowerShell
 powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -Format png
 ```
+
+### CJK Font Support
+
+When rendering diagrams containing Chinese, Japanese, or Korean characters, the `--cjk` flag:
+- Replaces `Helvetica` with `WenQuanYi Micro Hei` in the PlantUML source
+- Mounts host font directories into the Docker container
+- Refreshes the container's font cache before rendering
+
+Without `--cjk`, CJK characters are auto-detected and a warning is shown.
+
+### Aspect Ratio Auto-Correction
+
+After rendering SVG or PNG output, the script checks the image dimensions. If the aspect ratio
+(width/height or height/width) exceeds `--max-aspect` (default 2.5:1), the script:
+
+1. Modifies the `.puml` with layout directives (`left to right direction`, `top to bottom direction`, `scale`, padding adjustments)
+2. Re-renders the diagram
+3. Checks again (up to 2 correction attempts)
+
+This prevents diagrams from being excessively stretched in either dimension.
 
 ## License
 

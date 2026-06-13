@@ -1,4 +1,8 @@
-# Generated output
+# Dependencies (installed via npm/pnpm/yarn/bun)
+node_modules/
+.opencode/node_modules/
+
+# Generated output (diagram renders)
 output/
 
 # Release artifacts (built locally, distributed via GitHub Releases)
