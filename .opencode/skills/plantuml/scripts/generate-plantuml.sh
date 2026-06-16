@@ -9,13 +9,27 @@
 #   --cjk                       Enable CJK (Chinese/Japanese/Korean) font support
 #   --no-fix                    Disable automatic aspect ratio correction
 #   --max-aspect N              Max allowed aspect ratio before correction (default: 2.5)
+#   --use-public-server         Opt-in to render via the public PlantUML server.
+#                               WARNING: this uploads your diagram source to a third
+#                               party (plantuml.com). Off by default.
 #
 # Defaults: output_dir=./output, format=svg
 #
-# Conversion methods (tried in strict priority order):
-#   1. PlantUML public server (plantuml.com)   ← PREFERRED default backend
-#   2. Docker (plantuml/plantuml image)        ← fallback when public server unreachable
-#   3. Local plantuml.jar if present           ← last-resort offline fallback
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVACY NOTICE
+# ─────────────────────────────────────────────────────────────────────────────
+# This script renders diagrams LOCALLY by default. The PlantUML source is NOT
+# transmitted off-host unless you explicitly pass --use-public-server.
+#
+# Conversion methods (tried in strict priority order — local-first):
+#   1. Docker (plantuml/plantuml image)        ← PREFERRED default, fully local
+#   2. Local plantuml.jar if present           ← offline fallback (Java required)
+#   3. PlantUML public server (plantuml.com)   ← OPT-IN ONLY (--use-public-server)
+#                                                Uploads diagram source to a third
+#                                                party. Avoid for confidential
+#                                                architecture, credentials, or
+#                                                proprietary business logic.
+# ─────────────────────────────────────────────────────────────────────────────
 #
 # Cross-platform: works on Linux, macOS, and Windows (Git Bash / MSYS2 / WSL / Cygwin).
 set -euo pipefail
@@ -26,6 +40,7 @@ FORMAT="svg"
 CJK=false
 AUTO_FIX=true
 MAX_ASPECT=2.5
+USE_PUBLIC_SERVER=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -53,6 +68,10 @@ while [[ $# -gt 0 ]]; do
             MAX_ASPECT="${1#*=}"
             shift
             ;;
+        --use-public-server)
+            USE_PUBLIC_SERVER=true
+            shift
+            ;;
         --help|-h)
             echo "Usage: $0 <input.puml> [output_dir] [options]"
             echo ""
@@ -61,6 +80,13 @@ while [[ $# -gt 0 ]]; do
             echo "  --cjk                       Enable CJK (Chinese/Japanese/Korean) font support"
             echo "  --no-fix                    Disable automatic aspect ratio correction"
             echo "  --max-aspect N              Max aspect ratio before correction (default: 2.5)"
+            echo "  --use-public-server         OPT-IN: render via plantuml.com (uploads"
+            echo "                              diagram source to a third party). Off by default."
+            echo ""
+            echo "Backend priority (local-first):"
+            echo "  1. Docker (plantuml/plantuml)   — preferred, fully local"
+            echo "  2. Local plantuml.jar           — offline fallback (Java required)"
+            echo "  3. Public server                — OPT-IN ONLY via --use-public-server"
             exit 0
             ;;
         -*)
@@ -340,11 +366,19 @@ scale 0.8' "$tmp"
 # Rendering Backends
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ─── Method 1: PlantUML Public Server (PREFERRED) ───────────────────────────
-# Always tried first — fast, no local dependency, produces canonical PlantUML output.
-# Falls back to Docker / local JAR only when the public server cannot be reached.
+# ─── Method 3: PlantUML Public Server (OPT-IN ONLY) ─────────────────────────
+# DISABLED BY DEFAULT for privacy. Only invoked when the user explicitly passes
+# --use-public-server. This backend POSTs the entire diagram source to
+# plantuml.com — never use it for confidential architecture, credentials, or
+# proprietary business processes.
 convert_via_server() {
     local src="$1"
+
+    if ! $USE_PUBLIC_SERVER; then
+        echo "  → Public server disabled (privacy default). Pass --use-public-server to enable."
+        return 1
+    fi
+
     local server_url
     case "$FORMAT" in
         svg) server_url="https://www.plantuml.com/plantuml/svg" ;;
@@ -358,7 +392,14 @@ convert_via_server() {
         return 1
     fi
 
-    echo "  → Trying PlantUML public server (preferred)..."
+    echo ""
+    echo "  ⚠  PRIVACY WARNING: about to upload diagram source to ${server_url}"
+    echo "     The full contents of '$src' will be transmitted to plantuml.com,"
+    echo "     a third-party service operated by the PlantUML project."
+    echo "     Do NOT use this backend for confidential architecture, credentials,"
+    echo "     customer data, or proprietary business logic."
+    echo ""
+    echo "  → Trying PlantUML public server (opt-in via --use-public-server)..."
     if curl -sSf --connect-timeout 5 --max-time 30 \
             -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$INPUT" 2>/dev/null; then
         if [[ "$FORMAT" == "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && head -1 "$OUTPUT_FILE" | grep -q '<svg'; then
@@ -372,12 +413,13 @@ convert_via_server() {
             return 0
         fi
     fi
-    echo "  ✗ Public server failed (will fall back to Docker, then local JAR)"
+    echo "  ✗ Public server failed"
     rm -f "$OUTPUT_FILE"
     return 1
 }
 
-# ─── Method 2: Docker ────────────────────────────────────────────────────────
+# ─── Method 1: Docker (PREFERRED — fully local) ─────────────────────────────
+# Always tried first. Renders entirely on-host with no third-party network calls.
 convert_via_docker() {
     local src="$1"
     if ! command -v docker &>/dev/null; then
@@ -451,7 +493,7 @@ convert_via_docker() {
     return 1
 }
 
-# ─── Method 3: Local JAR ─────────────────────────────────────────────────────
+# ─── Method 2: Local JAR (offline fallback) ─────────────────────────────────
 convert_via_local() {
     local src="$1"
     local jar_paths=(
@@ -531,12 +573,14 @@ FIX_ATTEMPT=0
 
 while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
     # Render using the current working copy
-    convert_via_server "$WORK_COPY" || convert_via_docker "$WORK_COPY" || convert_via_local "$WORK_COPY" || {
+    convert_via_docker "$WORK_COPY" || convert_via_local "$WORK_COPY" || convert_via_server "$WORK_COPY" || {
         echo ""
         echo "❌ All conversion methods failed."
-        echo "   Install options:"
+        echo "   Install options (local, recommended for privacy):"
         echo "   1. Docker: docker pull plantuml/plantuml:latest"
         echo "   2. Java + JAR: download plantuml.jar from https://plantuml.com/download"
+        echo "   Or, to use the public PlantUML server (uploads diagram to plantuml.com):"
+        echo "   3. Re-run with --use-public-server (review the privacy notice first)"
         [[ -n "$CJK_COPY" ]] && rm -f "$CJK_COPY"
         exit 1
     }

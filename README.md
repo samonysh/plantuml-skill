@@ -16,7 +16,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 - **uml-diagrams.org reference style**: Pure black-and-white, dashed lifelines, white activation bars, text stereotypes — matches every figure on https://www.uml-diagrams.org
 - **Two equivalent preambles**: classic `skinparam` (max backward compatibility) and modern CSS `<style>` block (recommended on PlantUML ≥ 1.2019.9)
 - **Cross-platform render scripts**: Bash (Linux/macOS/Git-Bash/WSL) and PowerShell (Windows native)
-- **Multiple render backends** in strict priority order: PlantUML public server → Docker → local JAR (auto-fallback)
+- **Local-first rendering**: Docker → local JAR → public server (last is **opt-in only**, see [Privacy](#privacy))
 - **Text-based stereotypes**: `«interface»` and `«abstract»` instead of circle-with-letter icons
 - **Zero color**: Monochrome output suitable for academic papers, RFCs, and technical docs
 - **CJK font support**: Chinese/Japanese/Korean character rendering via `--cjk` flag
@@ -28,9 +28,9 @@ At least one of:
 
 | Method | Requirement |
 |---|---|
-| Docker | `docker pull plantuml/plantuml:latest` |
+| Docker (recommended) | `docker pull plantuml/plantuml:latest` |
 | Java | JRE 8+ with `plantuml.jar` |
-| Internet | (public server fallback — limited reliability) |
+| Internet (opt-in) | Public server backend, off by default — see [Privacy](#privacy) |
 
 Docker is recommended and used by default.
 
@@ -248,12 +248,15 @@ The skill ships with two equivalent entry points so it runs on every major OS:
 - `scripts/generate-plantuml.sh` — Bash (Linux, macOS, Git Bash, MSYS2, WSL, Cygwin)
 - `scripts/generate-plantuml.ps1` — PowerShell (native Windows)
 
-Both try three backends in **strict priority order** — the public server is preferred,
-Docker and the local JAR are only used when the server is unreachable:
+Both try three backends in **strict priority order — local-first**.
+Docker and the local JAR are tried first; the public server is **opt-in
+only** because it uploads diagram source to a third party:
 
-1. **PlantUML public server** (`https://www.plantuml.com/plantuml`) — **preferred default**, requires internet
-2. **Docker** (`plantuml/plantuml:latest`) — automatic fallback when the public server fails
-3. **Local JAR** (`plantuml.jar`) — last-resort offline fallback (requires Java)
+1. **Docker** (`plantuml/plantuml:latest`) — preferred default, fully local
+2. **Local JAR** (`plantuml.jar`) — offline fallback (requires Java)
+3. **PlantUML public server** (`https://www.plantuml.com/plantuml`) —
+   **opt-in** via `--use-public-server` (Bash) / `-UsePublicServer`
+   (PowerShell). See [Privacy](#privacy) before enabling.
 
 ```bash
 # SVG (default) — Bash
@@ -302,6 +305,45 @@ After rendering SVG or PNG output, the script checks the image dimensions. If th
 3. Checks again (up to 2 correction attempts)
 
 This prevents diagrams from being excessively stretched in either dimension.
+
+## Privacy
+
+This skill is **local-first**: by default, all rendering happens on your own
+machine and your `.puml` source code never leaves the host.
+
+The PlantUML public server backend (`plantuml.com`) is **disabled by default**
+and only runs when you explicitly opt in:
+
+```bash
+# Bash — explicit opt-in (uploads diagram source to plantuml.com)
+bash generate-plantuml.sh diagram.puml ./output --use-public-server
+```
+
+```powershell
+# PowerShell — explicit opt-in
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+```
+
+When opt-in is active, the script prints a runtime privacy warning and POSTs
+the entire `.puml` source to `https://www.plantuml.com/plantuml`.
+
+**Do NOT enable `--use-public-server` for diagrams containing**:
+
+- Internal hostnames, service names, or architecture details you don't want public
+- Credentials, tokens, API keys, or connection strings (even as placeholders)
+- Customer data, PII, or regulated content
+- Proprietary design IP, trade secrets, or unreleased product details
+
+If you are unsure, stay with the local default. Installing Docker
+(`docker pull plantuml/plantuml:latest`) or `plantuml.jar` removes any need
+for the remote backend.
+
+### CJK Docker mounts
+
+When `--cjk` is combined with the Docker backend, the script mounts host
+font directories **read-only** so PlantUML can find CJK fonts. The mounts
+are scoped to font directories only and are used solely inside the
+throwaway PlantUML container — no host data is written.
 
 ## License
 

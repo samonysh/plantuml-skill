@@ -16,7 +16,7 @@
 - **uml-diagrams.org 参考风格**：纯黑白、虚线生命线、白色激活条、文本 stereotype —— 与 https://www.uml-diagrams.org 上的每一张图视觉一致
 - **两套等价 preamble**：经典 `skinparam`（向后兼容性最强）与现代 CSS `<style>` 块（推荐用于 PlantUML ≥ 1.2019.9）
 - **跨平台渲染脚本**：Bash（Linux/macOS/Git-Bash/WSL）与 PowerShell（Windows 原生）双入口
-- **多渲染后端按严格优先级回退**：PlantUML 公网服务器 → Docker → 本地 JAR
+- **本地优先渲染**：Docker → 本地 JAR → 公网服务器（公网为**显式启用**，详见 [隐私](#隐私说明)）
 - **文本 stereotype**：使用 `«interface»` / `«abstract»` 文本，不用带字母的彩色圆圈图标
 - **零配色**：纯黑白输出，适合学术论文、RFC、技术文档等场景
 - **CJK 字体支持**：通过 `--cjk` 标志支持中文、日文、韩文字符渲染
@@ -28,11 +28,11 @@
 
 | 渲染方式 | 依赖 |
 |---|---|
-| Docker | `docker pull plantuml/plantuml:latest` |
+| Docker（推荐） | `docker pull plantuml/plantuml:latest` |
 | Java | JRE 8+ 与 `plantuml.jar` |
-| 互联网 | （公网服务器回退 —— 可靠性有限） |
+| 互联网（需显式启用） | 默认关闭，详见 [隐私](#隐私说明) |
 
-推荐使用 Docker，也是脚本默认尝试的方案之一。
+推荐使用 Docker —— 这是默认且首选的方案，完全在本地渲染，不会上传任何内容。
 
 **CJK（中日韩）字符渲染**需要宿主机安装 CJK 字体（使用 `--cjk` 参数时）：
 ```bash
@@ -236,11 +236,14 @@ skill 内置两套等价入口，覆盖所有主流操作系统：
 - `scripts/generate-plantuml.sh` — Bash（Linux、macOS、Git Bash、MSYS2、WSL、Cygwin）
 - `scripts/generate-plantuml.ps1` — PowerShell（Windows 原生）
 
-两者都按 **严格优先级顺序** 尝试三种后端 —— 公网服务器作为首选，Docker 和本地 JAR 仅在公网不可达时回退：
+两者都按 **严格优先级顺序 —— 本地优先** 尝试三种后端。Docker 与本地 JAR 优先尝试；
+公网服务器仅在用户**显式启用**时才使用，因为它会把图源上传至第三方（plantuml.com）：
 
-1. **PlantUML 公网服务器**（`https://www.plantuml.com/plantuml`）—— **首选默认方案**，需要联网
-2. **Docker**（`plantuml/plantuml:latest`）—— 公网失败时自动回退
-3. **本地 JAR**（`plantuml.jar`）—— 最终离线兜底方案（需 Java）
+1. **Docker**（`plantuml/plantuml:latest`）—— 默认首选，完全本地渲染
+2. **本地 JAR**（`plantuml.jar`）—— 离线回退（需 Java）
+3. **PlantUML 公网服务器**（`https://www.plantuml.com/plantuml`）—— **需显式启用**：
+   Bash 加 `--use-public-server`，PowerShell 加 `-UsePublicServer`。启用前请阅读
+   [隐私说明](#隐私说明)。
 
 ```bash
 # SVG（默认）— Bash
@@ -285,6 +288,43 @@ powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\ou
 3. 再次检查（最多进行 2 次修正尝试）
 
 这样可以避免图表在某个方向上过度拉伸。
+
+## 隐私说明
+
+本 skill **本地优先**：默认情况下所有渲染都在你自己的机器上完成，`.puml` 源代码
+不会离开宿主机。
+
+PlantUML 公网服务器后端（`plantuml.com`）**默认关闭**，仅在你显式启用时才会调用：
+
+```bash
+# Bash —— 显式启用（会把图源上传至 plantuml.com）
+bash generate-plantuml.sh diagram.puml ./output --use-public-server
+```
+
+```powershell
+# PowerShell —— 显式启用
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+```
+
+启用后，脚本会先打印一条运行时隐私警告，然后把整个 `.puml` 内容 POST 到
+`https://www.plantuml.com/plantuml`。
+
+**以下情况下请勿启用 `--use-public-server`**：
+
+- 内部主机名 / 服务名 / 架构细节（不希望对外披露）
+- 凭据、令牌、API Key、连接串（即使是占位符也不要）
+- 客户数据、个人信息或受监管内容
+- 专有设计 IP、商业秘密、未发布的产品信息
+
+如果不确定，请保持默认（本地渲染）。安装 Docker
+（一条命令：`docker pull plantuml/plantuml:latest`）或下载 `plantuml.jar`
+就完全不需要公网后端。
+
+### CJK Docker 字体挂载
+
+启用 `--cjk` 与 Docker 后端一起使用时，脚本会以**只读**方式将宿主字体目录挂载
+到容器中，让 PlantUML 能找到系统已安装的 CJK 字体。挂载范围严格限定在字体目录，
+仅作用于一次性 PlantUML 容器内部，不会向宿主写入任何数据。
 
 ## License
 

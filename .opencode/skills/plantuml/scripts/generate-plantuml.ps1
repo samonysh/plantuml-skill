@@ -4,10 +4,20 @@
 
 .DESCRIPTION
     Mirror of generate-plantuml.sh for native Windows PowerShell users.
-    Tries three backends in strict priority order:
-      1. PlantUML public server (plantuml.com)   — PREFERRED default backend
-      2. Docker (plantuml/plantuml image)        — fallback
-      3. Local plantuml.jar                       — last-resort offline fallback
+
+    PRIVACY NOTICE
+    --------------
+    This script renders diagrams LOCALLY by default. The PlantUML source is
+    NOT transmitted off-host unless you explicitly pass -UsePublicServer.
+
+    Backend priority (local-first):
+      1. Docker (plantuml/plantuml image)        — preferred, fully local
+      2. Local plantuml.jar                       — offline fallback (Java required)
+      3. PlantUML public server (plantuml.com)   — OPT-IN ONLY (-UsePublicServer)
+                                                   Uploads diagram source to a third
+                                                   party. Avoid for confidential
+                                                   architecture, credentials, or
+                                                   proprietary business processes.
 
     Supports CJK (Chinese/Japanese/Korean) font rendering via -Cjk flag,
     and automatic aspect ratio correction for excessively wide or tall diagrams.
@@ -32,6 +42,11 @@
 .PARAMETER MaxAspect
     Maximum allowed aspect ratio before correction (default: 2.5).
 
+.PARAMETER UsePublicServer
+    OPT-IN: render via the PlantUML public server (plantuml.com).
+    WARNING: this uploads the diagram source to a third-party service.
+    Off by default — local Docker / JAR backends are used instead.
+
 .EXAMPLE
     .\generate-plantuml.ps1 diagram.puml .\out -Format svg
 
@@ -40,6 +55,10 @@
 
 .EXAMPLE
     .\generate-plantuml.ps1 diagram.puml .\out -MaxAspect 3.0
+
+.EXAMPLE
+    # Opt in to remote rendering (uploads diagram to plantuml.com)
+    .\generate-plantuml.ps1 diagram.puml .\out -UsePublicServer
 #>
 [CmdletBinding()]
 param(
@@ -60,7 +79,10 @@ param(
     [switch]$NoFix,
 
     [Parameter()]
-    [float]$MaxAspect = 2.5
+    [float]$MaxAspect = 2.5,
+
+    [Parameter()]
+    [switch]$UsePublicServer
 )
 
 $ErrorActionPreference = "Stop"
@@ -269,7 +291,15 @@ function Fix-PumlAspectRatio {
 
 function Convert-ViaServer {
     param([string]$SourcePath = $InputPath)
-    # PREFERRED backend — always attempted first.
+    # OPT-IN ONLY backend. DISABLED unless -UsePublicServer is passed.
+    # When enabled, this function POSTs the entire diagram source to
+    # plantuml.com (a third-party service). The audit (SDI-2) flagged this
+    # as a data-exfiltration path, so we require explicit user consent.
+    if (-not $UsePublicServer) {
+        Write-Host "  → Public server disabled (privacy default). Pass -UsePublicServer to enable."
+        return $false
+    }
+
     $serverUrl = switch ($Format) {
         "svg" { "https://www.plantuml.com/plantuml/svg" }
         "png" { "https://www.plantuml.com/plantuml/png" }
@@ -277,7 +307,14 @@ function Convert-ViaServer {
         "txt" { "https://www.plantuml.com/plantuml/txt" }
     }
 
-    Write-Host "  → Trying PlantUML public server (preferred)..."
+    Write-Host ""
+    Write-Host "  ⚠  PRIVACY WARNING: about to upload diagram source to $serverUrl"
+    Write-Host "     The full contents of '$SourcePath' will be transmitted to plantuml.com,"
+    Write-Host "     a third-party service operated by the PlantUML project."
+    Write-Host "     Do NOT use this backend for confidential architecture, credentials,"
+    Write-Host "     customer data, or proprietary business logic."
+    Write-Host ""
+    Write-Host "  → Trying PlantUML public server (opt-in via -UsePublicServer)..."
     try {
         $body = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $SourcePath))
         Invoke-WebRequest -Uri $serverUrl -Method Post -Body $body `
@@ -303,7 +340,7 @@ function Convert-ViaServer {
         # fall through
     }
 
-    Write-Host "  ✗ Public server failed (will fall back to Docker, then local JAR)"
+    Write-Host "  ✗ Public server failed"
     if (Test-Path -LiteralPath $outputFile) { Remove-Item -LiteralPath $outputFile -Force }
     return $false
 }
@@ -481,15 +518,17 @@ $maxFixAttempts = 2
 $fixAttempt = 0
 
 while ($fixAttempt -le $maxFixAttempts) {
-    # Render using the current working copy
-    if (-not (Convert-ViaServer $workCopy)) {
-        if (-not (Convert-ViaDocker $workCopy)) {
-            if (-not (Convert-ViaLocal $workCopy)) {
+    # Render using the current working copy (local-first: Docker → JAR → opt-in server)
+    if (-not (Convert-ViaDocker $workCopy)) {
+        if (-not (Convert-ViaLocal $workCopy)) {
+            if (-not (Convert-ViaServer $workCopy)) {
                 Write-Host ""
                 Write-Host "❌ All conversion methods failed."
-                Write-Host "   Install options:"
+                Write-Host "   Install options (local, recommended for privacy):"
                 Write-Host "   1. Docker: docker pull plantuml/plantuml:latest"
                 Write-Host "   2. Java + JAR: download plantuml.jar from https://plantuml.com/download"
+                Write-Host "   Or, to use the public PlantUML server (uploads diagram to plantuml.com):"
+                Write-Host "   3. Re-run with -UsePublicServer (review the privacy notice first)"
                 if ($cjkCopy) { Remove-Item -LiteralPath $cjkCopy -Force -ErrorAction SilentlyContinue }
                 exit 1
             }
