@@ -16,9 +16,11 @@
 #                               font remains legible when printed. ON by default.
 #   --min-font-pt N             Minimum legible font size on A4 paper, in pt
 #                               (default: 8.0). Used only by --a4-check.
-#   --use-public-server         Opt-in to render via the public PlantUML server.
+#   --use-public-server         Opt-in to render via the public Kroki server.
 #                               WARNING: this uploads your diagram source to a third
-#                               party (plantuml.com). Off by default.
+#                               party (kroki.io by default). Override the host with
+#                               PLANTUML_PUBLIC_SERVER=<url> to point at a self-hosted
+#                               Kroki instance. Off by default.
 #
 # Defaults: output_dir=./output, format=svg
 #
@@ -31,11 +33,22 @@
 # Conversion methods (tried in strict priority order — local-first):
 #   1. Docker (plantuml/plantuml image)        ← PREFERRED default, fully local
 #   2. Local plantuml.jar if present           ← offline fallback (Java required)
-#   3. PlantUML public server (plantuml.com)   ← OPT-IN ONLY (--use-public-server)
-#                                                Uploads diagram source to a third
-#                                                party. Avoid for confidential
-#                                                architecture, credentials, or
-#                                                proprietary business logic.
+#   3. Kroki public server (kroki.io)          ← OPT-IN ONLY (--use-public-server)
+#                                                Uploads diagram source to a
+#                                                third party operated by Yuzu Tech
+#                                                (EU). Kroki is open source and
+#                                                self-hostable — point at your
+#                                                own instance with the env var
+#                                                PLANTUML_PUBLIC_SERVER=<url>.
+#                                                Avoid the default public host
+#                                                for confidential architecture,
+#                                                credentials, or proprietary
+#                                                business logic.
+#
+# Note on the previous backend: the legacy https://www.plantuml.com/plantuml
+# POST endpoint now sits behind a Cloudflare + Ezoic consent wall that returns
+# HTTP 302 to a JavaScript-only HTML page, breaking automated rendering. Kroki
+# replaces it as the default opt-in public backend in v1.4.1.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Cross-platform: works on Linux, macOS, and Windows (Git Bash / MSYS2 / WSL / Cygwin).
@@ -113,13 +126,16 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-a4-check               Disable A4 paper fit validation (ON by default)"
             echo "  --min-font-pt N             Min legible font size on A4 paper in pt"
             echo "                              (default: 8.0). Used only when A4 check is on."
-            echo "  --use-public-server         OPT-IN: render via plantuml.com (uploads"
-            echo "                              diagram source to a third party). Off by default."
+            echo "  --use-public-server         OPT-IN: render via Kroki (kroki.io). Uploads"
+            echo "                              diagram source to a third party (Yuzu Tech, EU)."
+            echo "                              Override host via PLANTUML_PUBLIC_SERVER=<url>"
+            echo "                              to point at a self-hosted Kroki instance."
+            echo "                              Off by default."
             echo ""
             echo "Backend priority (local-first):"
             echo "  1. Docker (plantuml/plantuml)   — preferred, fully local"
             echo "  2. Local plantuml.jar           — offline fallback (Java required)"
-            echo "  3. Public server                — OPT-IN ONLY via --use-public-server"
+            echo "  3. Kroki public server          — OPT-IN ONLY via --use-public-server"
             exit 0
             ;;
         -*)
@@ -520,11 +536,12 @@ fix_puml_a4_fit() {
 # Rendering Backends
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ─── Method 3: PlantUML Public Server (OPT-IN ONLY) ─────────────────────────
+# ─── Method 3: Kroki Public Server (OPT-IN ONLY) ────────────────────────────
 # DISABLED BY DEFAULT for privacy. Only invoked when the user explicitly passes
-# --use-public-server. This backend POSTs the entire diagram source to
-# plantuml.com — never use it for confidential architecture, credentials, or
-# proprietary business processes.
+# --use-public-server. This backend POSTs the entire diagram source to Kroki
+# (kroki.io by default, overridable via PLANTUML_PUBLIC_SERVER) — never use it
+# for confidential architecture, credentials, or proprietary business
+# processes. Kroki is open source and self-hostable.
 convert_via_server() {
     local src="$1"
 
@@ -533,29 +550,34 @@ convert_via_server() {
         return 1
     fi
 
-    local server_url
-    case "$FORMAT" in
-        svg) server_url="https://www.plantuml.com/plantuml/svg" ;;
-        png) server_url="https://www.plantuml.com/plantuml/png" ;;
-        pdf) server_url="https://www.plantuml.com/plantuml/pdf" ;;
-        txt) server_url="https://www.plantuml.com/plantuml/txt" ;;
-    esac
+    local server_host="${PLANTUML_PUBLIC_SERVER:-https://kroki.io}"
+    server_host="${server_host%/}"
+    local server_url="${server_host}/plantuml/${FORMAT}"
 
     if ! command -v curl &>/dev/null; then
         echo "  → curl not available, skipping public server"
         return 1
     fi
 
+    local host_label
+    host_label=$(echo "$server_host" | sed -E 's|^https?://||; s|/.*$||')
+
     echo ""
     echo "  ⚠  PRIVACY WARNING: about to upload diagram source to ${server_url}"
-    echo "     The full contents of '$src' will be transmitted to plantuml.com,"
-    echo "     a third-party service operated by the PlantUML project."
+    echo "     The full contents of '$src' will be transmitted to ${host_label}."
+    if [[ "$server_host" == "https://kroki.io" ]]; then
+        echo "     kroki.io is operated by Yuzu Tech (EU). Kroki is open source and"
+        echo "     self-hostable — set PLANTUML_PUBLIC_SERVER=<your-url> to use your own."
+    else
+        echo "     (Custom backend selected via PLANTUML_PUBLIC_SERVER.)"
+    fi
     echo "     Do NOT use this backend for confidential architecture, credentials,"
     echo "     customer data, or proprietary business logic."
     echo ""
-    echo "  → Trying PlantUML public server (opt-in via --use-public-server)..."
+    echo "  → Trying public server (opt-in via --use-public-server)..."
     if curl -sSfL --connect-timeout 10 --max-time 60 \
-            -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$INPUT" 2>/dev/null; then
+            -H "Content-Type: text/plain" \
+            -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$src" 2>/dev/null; then
         if [[ "$FORMAT" == "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && grep -q '<svg' "$OUTPUT_FILE"; then
             echo "  ✓ Success (public server)"
             return 0
@@ -733,8 +755,9 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
         echo "   Install options (local, recommended for privacy):"
         echo "   1. Docker: docker pull plantuml/plantuml:latest"
         echo "   2. Java + JAR: download plantuml.jar from https://plantuml.com/download"
-        echo "   Or, to use the public PlantUML server (uploads diagram to plantuml.com):"
+        echo "   Or, to use the public Kroki server (uploads diagram to kroki.io):"
         echo "   3. Re-run with --use-public-server (review the privacy notice first)"
+        echo "      Override the host with PLANTUML_PUBLIC_SERVER=<url> if self-hosting"
         [[ -n "$CJK_COPY" ]] && rm -f "$CJK_COPY"
         exit 1
     }

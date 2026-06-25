@@ -6,7 +6,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.4.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.4.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## Features
@@ -31,7 +31,7 @@ At least one of:
 |---|---|
 | Docker (recommended) | `docker pull plantuml/plantuml:latest` |
 | Java | JRE 8+ with `plantuml.jar` |
-| Internet (opt-in) | Public server backend, off by default — see [Privacy](#privacy) |
+| Internet (opt-in) | Kroki public server (kroki.io) backend, off by default — see [Privacy](#privacy) |
 
 Docker is recommended and used by default.
 
@@ -257,9 +257,10 @@ only** because it uploads diagram source to a third party:
 
 1. **Docker** (`plantuml/plantuml:latest`) — preferred default, fully local
 2. **Local JAR** (`plantuml.jar`) — offline fallback (requires Java)
-3. **PlantUML public server** (`https://www.plantuml.com/plantuml`) —
+3. **Kroki public server** (`https://kroki.io` by default) —
    **opt-in** via `--use-public-server` (Bash) / `-UsePublicServer`
-   (PowerShell). See [Privacy](#privacy) before enabling.
+   (PowerShell). Override host with `PLANTUML_PUBLIC_SERVER=<url>` to
+   point at a self-hosted Kroki. See [Privacy](#privacy) before enabling.
 
 ```bash
 # SVG (default) — Bash
@@ -314,11 +315,11 @@ This prevents diagrams from being excessively stretched in either dimension.
 This skill is **local-first**: by default, all rendering happens on your own
 machine and your `.puml` source code never leaves the host.
 
-The PlantUML public server backend (`plantuml.com`) is **disabled by default**
+The Kroki public server backend (`kroki.io` by default) is **disabled by default**
 and only runs when you explicitly opt in:
 
 ```bash
-# Bash — explicit opt-in (uploads diagram source to plantuml.com)
+# Bash — explicit opt-in (uploads diagram source to kroki.io)
 bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
 ```
 
@@ -327,8 +328,41 @@ bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./outpu
 powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
 ```
 
-When opt-in is active, the script prints a runtime privacy warning and POSTs
-the entire `.puml` source to `https://www.plantuml.com/plantuml`.
+When opt-in is active, the script prints a runtime privacy warning identifying
+the destination URL and operator, then POSTs the entire `.puml` source to
+`https://kroki.io/plantuml/<format>` (or your override host — see below).
+
+### Self-hosted Kroki
+
+[Kroki](https://github.com/yuzutech/kroki) is open source and trivially
+self-hostable in Docker. To route opt-in traffic to your own instance instead
+of the public `kroki.io`, set `PLANTUML_PUBLIC_SERVER`:
+
+```bash
+# Bash
+PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
+  bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+```
+
+```powershell
+# PowerShell
+$env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+```
+
+The runtime privacy warning surfaces the resolved host so you can confirm the
+destination before any data leaves the machine. Custom hosts must expose the
+standard Kroki endpoint shape `<base>/plantuml/<format>`.
+
+### Why Kroki (v1.4.1)
+
+Earlier versions of this script used `https://www.plantuml.com/plantuml`.
+That endpoint now sits behind a Cloudflare + Ezoic consent wall (HTTP 302 →
+JavaScript-only HTML page) which breaks all non-browser automation. Kroki is
+a drop-in replacement that re-runs the upstream PlantUML JAR server-side and
+is fully self-hostable, restoring the local-trust-boundary option that the
+plantuml.com backend used to provide. The public `kroki.io` instance is
+operated by Yuzu Tech (EU).
 
 **Do NOT enable `--use-public-server` for diagrams containing**:
 

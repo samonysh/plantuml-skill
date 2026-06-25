@@ -6,7 +6,7 @@
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.4.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.4.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## 特性
@@ -31,7 +31,7 @@
 |---|---|
 | Docker（推荐） | `docker pull plantuml/plantuml:latest` |
 | Java | JRE 8+ 与 `plantuml.jar` |
-| 互联网（需显式启用） | 默认关闭，详见 [隐私](#隐私说明) |
+| 互联网（需显式启用） | Kroki 公网服务器（kroki.io）后端，默认关闭，详见 [隐私](#隐私说明) |
 
 推荐使用 Docker —— 这是默认且首选的方案，完全在本地渲染，不会上传任何内容。
 
@@ -240,12 +240,13 @@ skill 内置两套等价入口，覆盖所有主流操作系统：
 - `.opencode/skills/plantuml/scripts/generate-plantuml.ps1` — PowerShell（Windows 原生）
 
 两者都按 **严格优先级顺序 —— 本地优先** 尝试三种后端。Docker 与本地 JAR 优先尝试；
-公网服务器仅在用户**显式启用**时才使用，因为它会把图源上传至第三方（plantuml.com）：
+公网服务器仅在用户**显式启用**时才使用，因为它会把图源上传至第三方（默认 kroki.io）：
 
 1. **Docker**（`plantuml/plantuml:latest`）—— 默认首选，完全本地渲染
 2. **本地 JAR**（`plantuml.jar`）—— 离线回退（需 Java）
-3. **PlantUML 公网服务器**（`https://www.plantuml.com/plantuml`）—— **需显式启用**：
-   Bash 加 `--use-public-server`，PowerShell 加 `-UsePublicServer`。启用前请阅读
+3. **Kroki 公网服务器**（默认 `https://kroki.io`）—— **需显式启用**：
+   Bash 加 `--use-public-server`，PowerShell 加 `-UsePublicServer`。可通过
+   `PLANTUML_PUBLIC_SERVER=<url>` 覆盖至自托管 Kroki 实例。启用前请阅读
    [隐私说明](#隐私说明)。
 
 ```bash
@@ -297,10 +298,10 @@ powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\gener
 本 skill **本地优先**：默认情况下所有渲染都在你自己的机器上完成，`.puml` 源代码
 不会离开宿主机。
 
-PlantUML 公网服务器后端（`plantuml.com`）**默认关闭**，仅在你显式启用时才会调用：
+Kroki 公网服务器后端（默认 `kroki.io`）**默认关闭**，仅在你显式启用时才会调用：
 
 ```bash
-# Bash —— 显式启用（会把图源上传至 plantuml.com）
+# Bash —— 显式启用（会把图源上传至 kroki.io）
 bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
 ```
 
@@ -309,8 +310,41 @@ bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./outpu
 powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
 ```
 
-启用后，脚本会先打印一条运行时隐私警告，然后把整个 `.puml` 内容 POST 到
-`https://www.plantuml.com/plantuml`。
+启用后，脚本会先打印一条运行时隐私警告（包含目的地 URL 与运营方信息），然后把
+整个 `.puml` 内容 POST 到 `https://kroki.io/plantuml/<format>`（或你的覆盖主机
+——见下）。
+
+### 自托管 Kroki
+
+[Kroki](https://github.com/yuzutech/kroki) 是开源项目，可以用 Docker 一键自托管。
+要把启用后的流量切到自己的实例（而不是公网 `kroki.io`），设置环境变量
+`PLANTUML_PUBLIC_SERVER` 即可：
+
+```bash
+# Bash
+PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
+  bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+```
+
+```powershell
+# PowerShell
+$env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+```
+
+运行时隐私警告会显示解析后的目标主机，便于上传前确认流向。自定义主机需要暴露
+标准的 Kroki 端点形式：`<base>/plantuml/<format>`。
+
+### 为什么是 Kroki（v1.4.1）
+
+早期版本的脚本使用 `https://www.plantuml.com/plantuml`。该端点目前位于
+Cloudflare + Ezoic 同意墙之后（POST 会被 302 重定向到一个纯 JavaScript 渲染的
+HTML 同意页），导致一切非浏览器自动化都无法用。Kroki 是一个无感替换：
+
+- 服务端运行的就是上游 PlantUML JAR，输出的 SVG/PNG/PDF/TXT 与原后端同源。
+- 开源、可自托管，让"把图发出去渲染但留在自己信任边界内"的选项重新可用。
+- 公网 `kroki.io` 实例由 Yuzu Tech（EU）运营，相比此前 US CDN 前置的
+  plantuml.com 更接近 GDPR 等基线默认。
 
 **以下情况下请勿启用 `--use-public-server`**：
 

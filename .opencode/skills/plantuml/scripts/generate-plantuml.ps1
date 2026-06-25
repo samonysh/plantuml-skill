@@ -13,11 +13,22 @@
     Backend priority (local-first):
       1. Docker (plantuml/plantuml image)        — preferred, fully local
       2. Local plantuml.jar                       — offline fallback (Java required)
-      3. PlantUML public server (plantuml.com)   — OPT-IN ONLY (-UsePublicServer)
+      3. Kroki public server (kroki.io)          — OPT-IN ONLY (-UsePublicServer)
                                                    Uploads diagram source to a third
-                                                   party. Avoid for confidential
-                                                   architecture, credentials, or
-                                                   proprietary business processes.
+                                                   party operated by Yuzu Tech (EU).
+                                                   Kroki is open source and self-
+                                                   hostable — set
+                                                   $env:PLANTUML_PUBLIC_SERVER to
+                                                   point at your own instance.
+                                                   Avoid the default public host
+                                                   for confidential architecture,
+                                                   credentials, or proprietary
+                                                   business processes.
+
+    Note: the legacy https://www.plantuml.com/plantuml POST endpoint now sits
+    behind a Cloudflare + Ezoic consent wall that returns HTTP 302 to a
+    JavaScript-only HTML page, breaking automated rendering. Kroki replaces
+    it as the default opt-in public backend in v1.4.1.
 
     Supports CJK (Chinese/Japanese/Korean) font rendering via -Cjk flag,
     and automatic aspect ratio correction for excessively wide or tall diagrams.
@@ -53,9 +64,11 @@
     when the A4 check is enabled.
 
 .PARAMETER UsePublicServer
-    OPT-IN: render via the PlantUML public server (plantuml.com).
+    OPT-IN: render via the Kroki public server (kroki.io by default).
     WARNING: this uploads the diagram source to a third-party service.
-    Off by default — local Docker / JAR backends are used instead.
+    Override the host via $env:PLANTUML_PUBLIC_SERVER = '<url>' to point at
+    a self-hosted Kroki instance. Off by default — local Docker / JAR
+    backends are used instead.
 
 .EXAMPLE
     .\generate-plantuml.ps1 diagram.puml .\out -Format svg
@@ -67,7 +80,12 @@
     .\generate-plantuml.ps1 diagram.puml .\out -MaxAspect 3.0
 
 .EXAMPLE
-    # Opt in to remote rendering (uploads diagram to plantuml.com)
+    # Opt in to remote rendering (uploads diagram to kroki.io)
+    .\generate-plantuml.ps1 diagram.puml .\out -UsePublicServer
+
+.EXAMPLE
+    # Opt in to a self-hosted Kroki instance
+    $env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
     .\generate-plantuml.ps1 diagram.puml .\out -UsePublicServer
 #>
 [CmdletBinding()]
@@ -399,29 +417,36 @@ function Fix-A4Fit {
 function Convert-ViaServer {
     param([string]$SourcePath = $InputPath)
     # OPT-IN ONLY backend. DISABLED unless -UsePublicServer is passed.
-    # When enabled, this function POSTs the entire diagram source to
-    # plantuml.com (a third-party service). The audit (SDI-2) flagged this
-    # as a data-exfiltration path, so we require explicit user consent.
+    # When enabled, this function POSTs the entire diagram source to a Kroki
+    # server (kroki.io by default, overridable via $env:PLANTUML_PUBLIC_SERVER).
+    # The audit (SDI-2) flagged this as a data-exfiltration path, so we require
+    # explicit user consent. Kroki is open source and self-hostable.
     if (-not $UsePublicServer) {
         Write-Host "  → Public server disabled (privacy default). Pass -UsePublicServer to enable."
         return $false
     }
 
-    $serverUrl = switch ($Format) {
-        "svg" { "https://www.plantuml.com/plantuml/svg" }
-        "png" { "https://www.plantuml.com/plantuml/png" }
-        "pdf" { "https://www.plantuml.com/plantuml/pdf" }
-        "txt" { "https://www.plantuml.com/plantuml/txt" }
+    $serverHost = if ($env:PLANTUML_PUBLIC_SERVER) {
+        $env:PLANTUML_PUBLIC_SERVER.TrimEnd('/')
+    } else {
+        "https://kroki.io"
     }
+    $serverUrl = "$serverHost/plantuml/$Format"
+    $hostLabel = ($serverHost -replace '^https?://', '') -replace '/.*$', ''
 
     Write-Host ""
     Write-Host "  ⚠  PRIVACY WARNING: about to upload diagram source to $serverUrl"
-    Write-Host "     The full contents of '$SourcePath' will be transmitted to plantuml.com,"
-    Write-Host "     a third-party service operated by the PlantUML project."
+    Write-Host "     The full contents of '$SourcePath' will be transmitted to $hostLabel."
+    if ($serverHost -eq "https://kroki.io") {
+        Write-Host "     kroki.io is operated by Yuzu Tech (EU). Kroki is open source and"
+        Write-Host "     self-hostable — set `$env:PLANTUML_PUBLIC_SERVER = '<your-url>' to use your own."
+    } else {
+        Write-Host "     (Custom backend selected via `$env:PLANTUML_PUBLIC_SERVER.)"
+    }
     Write-Host "     Do NOT use this backend for confidential architecture, credentials,"
     Write-Host "     customer data, or proprietary business logic."
     Write-Host ""
-    Write-Host "  → Trying PlantUML public server (opt-in via -UsePublicServer)..."
+    Write-Host "  → Trying public server (opt-in via -UsePublicServer)..."
     try {
         $body = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $SourcePath))
         Invoke-WebRequest -Uri $serverUrl -Method Post -Body $body `
@@ -635,8 +660,9 @@ while ($fixAttempt -le $maxFixAttempts) {
                 Write-Host "   Install options (local, recommended for privacy):"
                 Write-Host "   1. Docker: docker pull plantuml/plantuml:latest"
                 Write-Host "   2. Java + JAR: download plantuml.jar from https://plantuml.com/download"
-                Write-Host "   Or, to use the public PlantUML server (uploads diagram to plantuml.com):"
+                Write-Host "   Or, to use the public Kroki server (uploads diagram to kroki.io):"
                 Write-Host "   3. Re-run with -UsePublicServer (review the privacy notice first)"
+                Write-Host "      Override the host with `$env:PLANTUML_PUBLIC_SERVER = '<url>' if self-hosting"
                 if ($cjkCopy) { Remove-Item -LiteralPath $cjkCopy -Force -ErrorAction SilentlyContinue }
                 exit 1
             }

@@ -1,14 +1,15 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.4.0
+version: 1.4.1
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
   openclaw:
     # The render script is local-first: it tries Docker, then a local plantuml.jar.
-    # The PlantUML public server is OPT-IN ONLY (--use-public-server / -UsePublicServer)
-    # because it uploads diagram source to a third-party service (plantuml.com).
+    # The Kroki public server is OPT-IN ONLY (--use-public-server / -UsePublicServer)
+    # because it uploads diagram source to a third-party service (kroki.io by default,
+    # overridable to a self-hosted Kroki via PLANTUML_PUBLIC_SERVER).
     requires:
       anyBins:
         - docker
@@ -133,20 +134,23 @@ powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\gener
 ```
 
 Both scripts accept the same arguments and try three backends in **strict priority
-order — local-first**. Docker and the local JAR are tried first; the PlantUML
+order — local-first**. Docker and the local JAR are tried first; the Kroki
 public server is **OPT-IN ONLY** because it uploads your diagram source to a
-third-party service (plantuml.com):
+third-party service (kroki.io by default):
 
 1. **Docker** (`plantuml/plantuml:latest`) — preferred default, fully local
 2. **Local `plantuml.jar`** (requires Java) — offline fallback
-3. **PlantUML public server** (https://www.plantuml.com/plantuml) — **OPT-IN**
+3. **Kroki public server** (https://kroki.io by default) — **OPT-IN**
    via `--use-public-server` (Bash) or `-UsePublicServer` (PowerShell).
+   Override the host with `PLANTUML_PUBLIC_SERVER=<url>` (Bash) or
+   `$env:PLANTUML_PUBLIC_SERVER='<url>'` (PowerShell) to point at a
+   self-hosted Kroki instance.
 
 > ⚠ **Privacy notice** — passing `--use-public-server` / `-UsePublicServer`
-> POSTs the entire `.puml` source to `plantuml.com`. **Never** enable this
-> flag for diagrams containing confidential architecture, credentials,
-> customer data, or proprietary business logic. When in doubt, stay with
-> the default (Docker / local JAR). See the
+> POSTs the entire `.puml` source to `kroki.io` (or your override host).
+> **Never** enable this flag for diagrams containing confidential architecture,
+> credentials, customer data, or proprietary business logic. When in doubt,
+> stay with the default (Docker / local JAR). See the
 > [Privacy & Backend Selection](#privacy--backend-selection) section below
 > for the full data-flow contract.
 
@@ -233,9 +237,9 @@ No network calls are made; nothing is uploaded.
 
 ### Opt-in remote rendering
 
-The PlantUML public server (https://www.plantuml.com/plantuml) can render
-diagrams without any local installation, but doing so **POSTs the full `.puml`
-source to a third party**. To use it you must explicitly opt in:
+The Kroki public server (https://kroki.io) can render diagrams without any
+local installation, but doing so **POSTs the full `.puml` source to a third
+party**. To use it you must explicitly opt in:
 
 ```bash
 # Bash — explicit opt-in required
@@ -249,9 +253,49 @@ powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\ou
 
 When opt-in is active, the script:
 
-1. Prints a runtime privacy warning identifying the destination URL
-2. POSTs the full `.puml` contents to `plantuml.com`
+1. Prints a runtime privacy warning identifying the destination URL and operator
+2. POSTs the full `.puml` contents to `kroki.io` (or your override host)
 3. Saves the returned SVG/PNG/PDF/TXT locally
+
+### Self-hosted Kroki override
+
+Kroki is open source and self-hostable
+([github.com/yuzutech/kroki](https://github.com/yuzutech/kroki)). To route
+opt-in traffic to your own instance instead of the public `kroki.io`, set the
+`PLANTUML_PUBLIC_SERVER` env var to your base URL:
+
+```bash
+# Bash
+PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
+  bash generate-plantuml.sh diagram.puml ./output --use-public-server
+```
+
+```powershell
+# PowerShell
+$env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+```
+
+The runtime privacy warning surfaces the resolved host name so you can confirm
+the traffic destination before any data leaves the machine. Custom hosts must
+expose the standard Kroki endpoint shape `<base>/plantuml/<format>`.
+
+### Why Kroki replaced the legacy plantuml.com backend (v1.4.1)
+
+Earlier versions of this script POSTed to
+`https://www.plantuml.com/plantuml/<format>`. That endpoint now sits behind a
+Cloudflare + Ezoic consent wall: a POST returns `302` redirecting to a
+JavaScript-only HTML consent page, making non-browser automation impossible.
+Kroki replaces it because:
+
+- It re-runs the official upstream PlantUML JAR server-side, so the output is
+  byte-for-byte the same family of SVG/PNG/PDF/TXT.
+- It is open source and trivially self-hostable in Docker, restoring the
+  "render off-host but in your trust boundary" option that the plantuml.com
+  default once provided.
+- The Yuzu Tech operated public instance is EU-hosted, which moves the
+  default jurisdiction closer to GDPR-style baseline expectations than the
+  prior US-CDN-fronted plantuml.com path.
 
 ### When NOT to use `--use-public-server`
 
