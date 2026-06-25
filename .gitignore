@@ -19,3 +19,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local-only release playbook (not for distribution)
+RELEASE_PROCESS.md

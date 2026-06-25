@@ -13,3 +13,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Local-only release playbook (not for distribution)
+RELEASE_PROCESS.md
