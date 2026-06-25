@@ -1,7 +1,7 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.3.0
+version: 1.4.0
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
@@ -49,6 +49,7 @@ No exceptions unless the user explicitly requests otherwise.
 - **No 3D effects**: Drop shadows MUST be disabled (`skinparam shadowing false`).
 - **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles. When CJK characters are present, use `--cjk` flag to switch to a CJK-compatible font (see [CJK Font Support](#cjk-chinesejapanesekorean-font-support)).
 - **Aspect ratio**: Generated diagrams are automatically validated for extreme aspect ratios. If a diagram is excessively wide or tall (exceeding 2.5:1 by default), the renderer applies layout corrections and re-renders. Use `--no-fix` to disable this behavior (see Step 3).
+- **A4 paper fit**: After aspect-ratio validation passes, the diagram is checked against A4 paper (210×297 mm). At the **96 DPI CSS standard**, this works out to **794×1123 px portrait** and **1123×794 px landscape**. The renderer accepts the diagram if it fits in EITHER orientation; otherwise it injects a computed PlantUML `scale N` directive and re-renders up to once. The default body font of 12 px (from the mandatory preamble) shrinks proportionally; if the estimated on-paper font drops below `--min-font-pt` (default **8 pt**), the script prints a legibility warning — at that point no further down-scaling helps and the user must split the diagram or abbreviate labels. A4 fit is **ON by default**; disable with `--no-a4-check` (`-NoA4Check` on PowerShell).
 - **Standard UML shapes**:
   - Actors are **stick figures** (never Visio icons or images).
   - Classes / components / nodes are plain rectangles; activities are round-cornered rectangles with the activity name in the upper-left.
@@ -179,6 +180,37 @@ To set a custom aspect ratio threshold:
 ```bash
 bash generate-plantuml.sh diagram.puml ./output --max-aspect 3.0
 ```
+
+**A4 paper fit validation**: After the aspect-ratio check passes, the render script validates the diagram's pixel dimensions against A4 paper. PlantUML writes SVG in CSS pixels at the 96 DPI standard, so A4 (210×297 mm = 8.27×11.69 in) maps to **794×1123 px portrait** or **1123×794 px landscape**. The check is **ON by default** and runs right after the aspect check.
+
+Behaviour:
+- If the rendered image already fits within EITHER A4 box — nothing changes, the diagram is reported as A4-ready.
+- If the image exceeds both boxes, the script computes the smallest scale factor that lets it fit either orientation, clamps to `≤1.0` and a hard floor of `0.15`, injects a `scale N` directive into a working copy of the `.puml`, then re-renders once.
+- After re-rendering the script estimates the effective on-paper font size: `scale × 12 px × 0.75 ≈ pt` (the 0.75 factor converts px to pt at 96 DPI). If this is below `--min-font-pt` it prints a legibility warning — at that point further down-scaling cannot help; the user must split the diagram, shorten labels, or switch to a smaller font.
+
+Flags:
+
+| Flag (Bash) | Flag (PowerShell) | Purpose | Default |
+|---|---|---|---|
+| `--no-a4-check` | `-NoA4Check` | Disable A4 fit validation entirely | off (check ON) |
+| `--min-font-pt N` | `-MinFontPt N` | Minimum legible on-paper font size in pt | `8.0` |
+
+Examples:
+```bash
+# Disable A4 fit
+bash generate-plantuml.sh diagram.puml ./output --no-a4-check
+
+# Tighten legibility threshold (warn if effective font drops below 10 pt)
+bash generate-plantuml.sh diagram.puml ./output --min-font-pt 10
+```
+
+```powershell
+# PowerShell equivalents
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -NoA4Check
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -MinFontPt 10
+```
+
+A4 fit is skipped automatically for `txt` and `pdf` output (TXT has no image dimensions; PDF is already a print-oriented format the PlantUML renderer pages itself). The check shares the same 2-attempt auto-fix budget as aspect-ratio correction — running both does not double the cap.
 
 **After rendering, show the user the output.** If SVG is generated, read and display it inline.
 If PNG/PDF is generated, tell the user where the file is saved.
@@ -798,6 +830,15 @@ If aspect ratio warnings appear:
    - Try `scale 0.75` or `scale 0.5` for extreme cases
 3. For sequence diagrams with many participants: consider splitting into multiple diagrams or abbreviating participant names
 
+If A4 fit warnings appear (the script prints `📄 A4 fit: ... exceeds A4 ...`):
+1. The script has already re-rendered once with a `scale N` directive computed from the smaller required factor. Check the loop output for "A4 fit ✓" on the second render — if present, the diagram now fits within A4.
+2. If "Estimated font ≈ Npt on A4" message shows a value BELOW your `--min-font-pt` threshold (default 8 pt), further down-scaling will not make the diagram readable on print. To fix manually:
+   - Split the diagram at a natural boundary (per use case, per subsystem, per actor).
+   - Shorten long labels — e.g. replace `client_id, redirect_uri` with shortened param names.
+   - For sequence diagrams with many participants: group messages into sub-diagrams, or abbreviate participant display names.
+3. If you do not need A4 conformance for the current output, re-run with `--no-a4-check` (`-NoA4Check`) to keep the larger original.
+4. To let the diagram stretch across multiple A4 sheets, set `--min-font-pt 6` (or lower) and accept reduced legibility — the script will warn but still emit the smaller-than-A4 final image.
+
 ---
 
 ## Output Expectations
@@ -807,4 +848,5 @@ After successful generation:
 2. Show the rendered output (SVG inline if possible)
 3. Report the saved file paths for both `.puml` and the rendered image
 4. Note any aspect ratio corrections that were applied (with dimensions before/after)
-5. Offer to make adjustments
+5. Note whether A4 fit was met natively, applied a re-scale (report the `scale N` factor and the post-fix dimensions), or skipped due to legibility threshold; if the legibility warning fired, surface it and propose splitting the diagram
+6. Offer to make adjustments

@@ -6,12 +6,12 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.1.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.4.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## Features
 
-- **6+ diagram types**: Sequence, Class, Activity, Use Case, Component, State, and more
+- **9 diagram types**: Sequence, Class, Activity, Use Case, Component, State, Deployment, Gantt, Mind Map
 - **Natural language input**: Describe what you want — the skill picks the right diagram type
 - **uml-diagrams.org reference style**: Pure black-and-white, dashed lifelines, white activation bars, text stereotypes — matches every figure on https://www.uml-diagrams.org
 - **Two equivalent preambles**: classic `skinparam` (max backward compatibility) and modern CSS `<style>` block (recommended on PlantUML ≥ 1.2019.9)
@@ -21,6 +21,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 - **Zero color**: Monochrome output suitable for academic papers, RFCs, and technical docs
 - **CJK font support**: Chinese/Japanese/Korean character rendering via `--cjk` flag
 - **Aspect ratio auto-correction**: Detects and fixes excessively wide or tall diagrams
+- **A4 paper fit validation**: Ensures diagrams fit A4 dimensions (794×1123 px @ 96 DPI) with legible font sizes
 
 ## Prerequisites
 
@@ -90,13 +91,13 @@ You can also render `.puml` files directly. The skill ships with both a Bash and
 **Linux / macOS / Git Bash / WSL:**
 
 ```bash
-bash scripts/generate-plantuml.sh input.puml output_dir --format svg
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh input.puml output_dir --format svg
 ```
 
 **Windows PowerShell:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\generate-plantuml.ps1 input.puml output_dir -Format svg
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 input.puml output_dir -Format svg
 ```
 
 Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Format` instead of `--format`.
@@ -106,6 +107,8 @@ Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Forma
 | `--format svg\|png\|pdf\|txt` | Output format | `svg` |
 | `--cjk` | Enable CJK font support | off (auto-detects) |
 | `--no-fix` | Disable aspect ratio auto-correction | off (auto-fix enabled) |
+| `--no-a4-check` | Disable A4 paper fit validation (794×1123 px portrait at 96 DPI) | off (A4 check ON) |
+| `--min-font-pt N` | Minimum legible on-paper font size in pt | `8.0` |
 | `--max-aspect N` | Max aspect ratio threshold | `2.5` |
 
 ## Supported Diagram Types
@@ -118,9 +121,9 @@ Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Forma
 | **Use Case** | System actors, roles, permissions | "Admin can manage users, Editor can publish" |
 | **Component** | Microservices, system architecture | "API Gateway routes to User and Order services" |
 | **State** | Lifecycles, state machines | "Ticket goes from New → Assigned → Resolved" |
-| Deployment | Infrastructure, cloud topology | (by description) |
-| Gantt | Timelines, project plans | (by description) |
-| Mind Map | Hierarchies, brainstorming | (by description) |
+| Deployment | Infrastructure, cloud topology | "App server deployed on AWS with RDS and CDN" |
+| Gantt | Timelines, project plans | "Design 2 weeks, dev 4 weeks, test 1 week" |
+| Mind Map | Hierarchies, brainstorming | "Break down system architecture into subsystems" |
 
 ## Style Standard
 
@@ -199,20 +202,20 @@ CSS variant on PlantUML ≥ 1.2019.9 where `skinparam` is being phased out.
 All example source files (`.puml`) are in the [`examples/`](examples/) directory. They all use the **uml-diagrams.org reference style** preamble (example #07 uses the alternative CSS variant). You can regenerate any single one:
 
 ```bash
-bash scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
 ```
 
 Or regenerate all of them at once:
 
 ```bash
 # Bash
-for f in examples/*.puml; do bash scripts/generate-plantuml.sh "$f" examples --format svg; done
+for f in examples/*.puml; do bash .opencode/skills/plantuml/scripts/generate-plantuml.sh "$f" examples --format svg; done
 ```
 
 ```powershell
 # PowerShell
 Get-ChildItem examples\*.puml | ForEach-Object {
-    powershell -ExecutionPolicy Bypass -File scripts\generate-plantuml.ps1 $_.FullName examples -Format svg
+    powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 $_.FullName examples -Format svg
 }
 ```
 
@@ -245,8 +248,8 @@ plantuml-skill/
 
 The skill ships with two equivalent entry points so it runs on every major OS:
 
-- `scripts/generate-plantuml.sh` — Bash (Linux, macOS, Git Bash, MSYS2, WSL, Cygwin)
-- `scripts/generate-plantuml.ps1` — PowerShell (native Windows)
+- `.opencode/skills/plantuml/scripts/generate-plantuml.sh` — Bash (Linux, macOS, Git Bash, MSYS2, WSL, Cygwin)
+- `.opencode/skills/plantuml/scripts/generate-plantuml.ps1` — PowerShell (native Windows)
 
 Both try three backends in **strict priority order — local-first**.
 Docker and the local JAR are tried first; the public server is **opt-in
@@ -260,30 +263,30 @@ only** because it uploads diagram source to a third party:
 
 ```bash
 # SVG (default) — Bash
-bash generate-plantuml.sh diagram.puml ./output
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output
 
 # PNG — Bash
-bash generate-plantuml.sh diagram.puml ./output --format png
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png
 
 # SVG with CJK font support
-bash generate-plantuml.sh diagram.puml ./output --cjk
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --cjk
 
 # PNG, with custom aspect ratio threshold
-bash generate-plantuml.sh diagram.puml ./output --format png --max-aspect 3.0
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 3.0
 
 # ASCII art — Bash (txt format skips image rendering)
-bash generate-plantuml.sh diagram.puml ./output --format txt
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format txt
 
 # Disable aspect ratio auto-correction
-bash generate-plantuml.sh diagram.puml ./output --no-fix
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --no-fix
 ```
 
 ```powershell
 # SVG (default) — PowerShell
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output
 
 # PNG — PowerShell
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -Format png
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -Format png
 ```
 
 ### CJK Font Support
@@ -316,12 +319,12 @@ and only runs when you explicitly opt in:
 
 ```bash
 # Bash — explicit opt-in (uploads diagram source to plantuml.com)
-bash generate-plantuml.sh diagram.puml ./output --use-public-server
+bash .opencode/skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
 ```
 
 ```powershell
 # PowerShell — explicit opt-in
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
 ```
 
 When opt-in is active, the script prints a runtime privacy warning and POSTs
@@ -347,4 +350,4 @@ throwaway PlantUML container — no host data is written.
 
 ## License
 
-MIT
+MIT-0

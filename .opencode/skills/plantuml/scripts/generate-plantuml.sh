@@ -9,6 +9,13 @@
 #   --cjk                       Enable CJK (Chinese/Japanese/Korean) font support
 #   --no-fix                    Disable automatic aspect ratio correction
 #   --max-aspect N              Max allowed aspect ratio before correction (default: 2.5)
+#   --no-a4-check               Disable automatic A4 paper fit validation
+#                               The A4 check ensures the rendered diagram fits within
+#                               either portrait (794×1123 px @ 96 DPI) or landscape
+#                               (1123×794 px) A4 dimensions and that the rendered
+#                               font remains legible when printed. ON by default.
+#   --min-font-pt N             Minimum legible font size on A4 paper, in pt
+#                               (default: 8.0). Used only by --a4-check.
 #   --use-public-server         Opt-in to render via the public PlantUML server.
 #                               WARNING: this uploads your diagram source to a third
 #                               party (plantuml.com). Off by default.
@@ -40,7 +47,18 @@ FORMAT="svg"
 CJK=false
 AUTO_FIX=true
 MAX_ASPECT=2.5
+A4_CHECK=true
+MIN_FONT_PT=8.0
 USE_PUBLIC_SERVER=false
+
+# A4 paper dimensions in pixels at 96 DPI (CSS standard: 1in = 96px, A4 = 210×297 mm)
+A4_PORTRAIT_W=794
+A4_PORTRAIT_H=1123
+A4_LANDSCAPE_W=1123
+A4_LANDSCAPE_H=794
+
+# PlantUML/SVG default body font size in px produced by the mandatory preamble
+DEFAULT_FONT_PX=12
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -68,6 +86,18 @@ while [[ $# -gt 0 ]]; do
             MAX_ASPECT="${1#*=}"
             shift
             ;;
+        --no-a4-check)
+            A4_CHECK=false
+            shift
+            ;;
+        --min-font-pt)
+            MIN_FONT_PT="${2:-8.0}"
+            shift 2
+            ;;
+        --min-font-pt=*)
+            MIN_FONT_PT="${1#*=}"
+            shift
+            ;;
         --use-public-server)
             USE_PUBLIC_SERVER=true
             shift
@@ -80,6 +110,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --cjk                       Enable CJK (Chinese/Japanese/Korean) font support"
             echo "  --no-fix                    Disable automatic aspect ratio correction"
             echo "  --max-aspect N              Max aspect ratio before correction (default: 2.5)"
+            echo "  --no-a4-check               Disable A4 paper fit validation (ON by default)"
+            echo "  --min-font-pt N             Min legible font size on A4 paper in pt"
+            echo "                              (default: 8.0). Used only when A4 check is on."
             echo "  --use-public-server         OPT-IN: render via plantuml.com (uploads"
             echo "                              diagram source to a third party). Off by default."
             echo ""
@@ -363,6 +396,127 @@ scale 0.8' "$tmp"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# A4 Paper Fit Validation & Auto-Scale Fix
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Checks the rendered diagram against A4 paper dimensions (210×297 mm).
+# PlantUML output is measured in SVG pixels at 96 DPI (the CSS standard);
+# 1 in = 96 px, A4 = 210×297 mm = 8.27×11.69 in ⇒ 794×1123 px (portrait),
+# 1123×794 px (landscape). The script accepts the diagram if it fits in
+# EITHER orientation without overflowing.
+#
+# If the diagram exceeds A4 in BOTH dimensions, it applies a PlantUML "scale"
+# directive computed from the smaller of the two required scale factors, then
+# re-renders. After re-rendering it also estimates the effective on-paper font
+# size: scale × DEFAULT_FONT_PX ÷ (96/72) = scale × DEFAULT_FONT_PX × 0.75,
+# i.e. px-to-pt ratio. If the effective pt is below --min-font-pt, the diagram
+# can no longer be made readable by scaling alone and the user is warned.
+
+# check_a4_fit — Validate image fits within A4 portrait OR landscape
+# Arguments: $1=image_file, $2=format (svg|png)
+# Sets global: A4_SCALE_FACTOR (1.0 if already fits; otherwise required factor)
+# Returns: 0 if fits A4, 1 if needs scaling, 2 if check failed
+check_a4_fit() {
+    local img="$1"
+    local fmt="$2"
+    local w h
+
+    case "$fmt" in
+        svg)
+            get_svg_dimensions "$img" || return 2
+            w="$SVG_WIDTH"
+            h="$SVG_HEIGHT"
+            ;;
+        png)
+            get_png_dimensions "$img" || return 2
+            w="$PNG_WIDTH"
+            h="$PNG_HEIGHT"
+            ;;
+        *) return 2 ;;
+    esac
+
+    if [[ -z "$w" ]] || [[ -z "$h" ]] || [[ "$w" -le 0 ]] || [[ "$h" -le 0 ]]; then
+        return 2
+    fi
+
+    A4_SCALE_FACTOR="1.0"
+
+    local fits_portrait fits_landscape
+    awk "BEGIN {exit !($w <= $A4_PORTRAIT_W && $h <= $A4_PORTRAIT_H)}" 2>/dev/null && fits_portrait=1 || fits_portrait=0
+    awk "BEGIN {exit !($w <= $A4_LANDSCAPE_W && $h <= $A4_LANDSCAPE_H)}" 2>/dev/null && fits_landscape=1 || fits_landscape=0
+
+    if [[ "$fits_portrait" -eq 1 ]] || [[ "$fits_landscape" -eq 1 ]]; then
+        echo "  📄 A4 fit: ${w}x${h}px fits A4 portrait (794x1123) or landscape (1123x794) ✓"
+        return 0
+    fi
+
+    # scale = min(target_w / w, target_h / h); compute for each orientation
+    local sp sl
+    sp=$(awk "BEGIN {p1=($A4_PORTRAIT_W / $w); p2=($A4_PORTRAIT_H / $h); s=(p1<p2)?p1:p2; printf \"%.3f\", s}" 2>/dev/null || echo "")
+    sl=$(awk "BEGIN {l1=($A4_LANDSCAPE_W / $w); l2=($A4_LANDSCAPE_H / $h); s=(l1<l2)?l1:l2; printf \"%.3f\", s}" 2>/dev/null || echo "")
+
+    if [[ -z "$sp" ]] || [[ -z "$sl" ]]; then
+        echo "  ⚠ A4 fit: could not compute scale factor (awk failed); skipping"
+        return 2
+    fi
+
+    # Use the orientation that needs less shrinking (the higher of the two factors)
+    A4_SCALE_FACTOR=$(awk "BEGIN {printf \"%.3f\", ($sp > $sl) ? $sp : $sl}" 2>/dev/null)
+
+    # Clamp: never go below 0.15 — beyond that the diagram is unreadable
+    local clamped
+    clamped=$(awk "BEGIN {printf \"%.3f\", ($A4_SCALE_FACTOR < 0.15) ? 0.15 : $A4_SCALE_FACTOR}" 2>/dev/null)
+    A4_SCALE_FACTOR="$clamped"
+
+    echo "  📄 A4 fit: ${w}x${h}px exceeds A4 portrait (794x1123) and landscape (1123x794)"
+    echo "     Required scale to fit: ${A4_SCALE_FACTOR} (portrait factor ${sp}, landscape factor ${sl})"
+    return 1
+}
+
+# fix_puml_a4_fit — Insert a PlantUML scale directive into a .puml copy
+# Arguments: $1=puml_file
+# Uses global A4_SCALE_FACTOR set by check_a4_fit
+# Returns: path to modified .puml on stdout, empty string on failure
+fix_puml_a4_fit() {
+    local puml="$1"
+    local tmp="${puml}.a4fixed"
+
+    if [[ -z "$A4_SCALE_FACTOR" ]] || [[ "$A4_SCALE_FACTOR" == "1.0" ]]; then
+        echo ""
+        return 1
+    fi
+    if grep -q '!pragma a4FitFixed' "$puml" 2>/dev/null; then
+        echo ""
+        return 1
+    fi
+
+    cp "$puml" "$tmp"
+    sed -i '1s/^@startuml/@startuml\n!pragma a4FitFixed/' "$tmp"
+
+    # PlantUML accepts only one scale directive per diagram; strip the
+    # aspect-ratio auto-fix's `scale 0.8` so our A4 scale takes effect.
+    sed -i '/^scale 0\.8$/d' "$tmp"
+
+    sed -i "/!pragma a4FitFixed/a scale ${A4_SCALE_FACTOR}" "$tmp"
+    echo "  → Applied: scale ${A4_SCALE_FACTOR} (A4 fit)"
+
+    # Warn about font legibility on A4 if we shrunk a lot
+    local effective_pt
+    effective_pt=$(awk "BEGIN {printf \"%.1f\", $A4_SCALE_FACTOR * $DEFAULT_FONT_PX * 0.75}" 2>/dev/null)
+    if [[ -n "$effective_pt" ]]; then
+        if awk "BEGIN {exit !($effective_pt < $MIN_FONT_PT)}" 2>/dev/null; then
+            echo "  ⚠ After scaling to ${A4_SCALE_FACTOR}, estimated font ≈ ${effective_pt}pt on A4"
+            echo "    That is below --min-font-pt ${MIN_FONT_PT} and may be hard to read in print."
+            echo "    Consider splitting into multiple diagrams or abbreviating labels."
+        else
+            echo "     Estimated font ≈ ${effective_pt}pt on A4 (≥ min ${MIN_FONT_PT}pt) ✓"
+        fi
+    fi
+
+    echo "$tmp"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Rendering Backends
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -400,9 +554,9 @@ convert_via_server() {
     echo "     customer data, or proprietary business logic."
     echo ""
     echo "  → Trying PlantUML public server (opt-in via --use-public-server)..."
-    if curl -sSf --connect-timeout 5 --max-time 30 \
+    if curl -sSfL --connect-timeout 10 --max-time 60 \
             -o "$OUTPUT_FILE" -X POST "$server_url" --data-binary "@$INPUT" 2>/dev/null; then
-        if [[ "$FORMAT" == "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && head -1 "$OUTPUT_FILE" | grep -q '<svg'; then
+        if [[ "$FORMAT" == "svg" ]] && [[ -s "$OUTPUT_FILE" ]] && grep -q '<svg' "$OUTPUT_FILE"; then
             echo "  ✓ Success (public server)"
             return 0
         elif [[ "$FORMAT" == "txt" ]] && [[ -s "$OUTPUT_FILE" ]]; then
@@ -413,8 +567,7 @@ convert_via_server() {
             return 0
         fi
     fi
-    echo "  ✗ Public server failed"
-    rm -f "$OUTPUT_FILE"
+    echo "  ✗ Public server failed — check network or try Docker/local JAR backend"
     return 1
 }
 
@@ -570,9 +723,10 @@ fi
 RENDER_OK=false
 MAX_FIX_ATTEMPTS=2
 FIX_ATTEMPT=0
+ASPECT_DONE=false
+A4_TRIED=false
 
 while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
-    # Render using the current working copy
     convert_via_docker "$WORK_COPY" || convert_via_local "$WORK_COPY" || convert_via_server "$WORK_COPY" || {
         echo ""
         echo "❌ All conversion methods failed."
@@ -584,50 +738,84 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
         [[ -n "$CJK_COPY" ]] && rm -f "$CJK_COPY"
         exit 1
     }
-
     RENDER_OK=true
 
-    # ── Aspect Ratio Validation & Auto-Fix ────────────────────────────────────
-    if $AUTO_FIX && [[ "$FORMAT" != "txt" ]] && [[ "$FORMAT" != "pdf" ]]; then
-        if check_aspect_ratio "$OUTPUT_FILE" "$FORMAT"; then
-            break
-        fi
-
-        local check_rc=$?
-        if [[ "$check_rc" -eq 2 ]]; then
-            echo "  ⓘ Could not determine image dimensions; skipping aspect ratio check."
-            break
-        fi
-
-        local w h
-        case "$FORMAT" in
-            svg) w="$SVG_WIDTH"; h="$SVG_HEIGHT" ;;
-            png) w="$PNG_WIDTH"; h="$PNG_HEIGHT" ;;
-        esac
-
-        local problem="too_wide"
-        [[ "$h" -gt "$w" ]] && problem="too_tall"
-
-        FIX_ATTEMPT=$((FIX_ATTEMPT + 1))
-        if [[ "$FIX_ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]]; then
-            echo "  ⚠ Maximum fix attempts ($MAX_FIX_ATTEMPTS) reached. Manual adjustment may be needed."
-            break
-        fi
-
-        local fixed_puml
-        fixed_puml=$(fix_puml_aspect_ratio "$WORK_COPY" "$problem") || {
-            echo "  ✗ Auto-fix failed; using original diagram."
-            break
-        }
-
-        if [[ "$WORK_COPY" != "$INPUT" ]]; then
-            rm -f "$WORK_COPY"
-        fi
-        WORK_COPY="$fixed_puml"
-        echo "  → Re-rendering with corrected layout..."
-    else
+    if [[ "$FORMAT" == "txt" ]] || [[ "$FORMAT" == "pdf" ]]; then
         break
     fi
+
+    if $AUTO_FIX && ! $ASPECT_DONE; then
+        aspect_rc=2
+        check_aspect_ratio "$OUTPUT_FILE" "$FORMAT" && aspect_rc=0 || aspect_rc=$?
+
+        if [[ "$aspect_rc" -eq 2 ]]; then
+            echo "  ⓘ Could not determine image dimensions; skipping aspect ratio check."
+            ASPECT_DONE=true
+        elif [[ "$aspect_rc" -eq 1 ]]; then
+            FIX_ATTEMPT=$((FIX_ATTEMPT + 1))
+            if [[ "$FIX_ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]]; then
+                echo "  ⚠ Maximum fix attempts ($MAX_FIX_ATTEMPTS) reached. Manual adjustment may be needed."
+                break
+            fi
+
+            aspect_w="$SVG_WIDTH"; aspect_h="$SVG_HEIGHT"
+            if [[ "$FORMAT" == "png" ]]; then aspect_w="$PNG_WIDTH"; aspect_h="$PNG_HEIGHT"; fi
+
+            aspect_problem="too_wide"
+            [[ "$aspect_h" -gt "$aspect_w" ]] && aspect_problem="too_tall"
+
+            aspect_fixed=$(fix_puml_aspect_ratio "$WORK_COPY" "$aspect_problem") || {
+                echo "  ✗ Auto-fix failed; using original diagram."
+                break
+            }
+
+            if [[ "$WORK_COPY" != "$INPUT" ]]; then
+                rm -f "$WORK_COPY"
+            fi
+            WORK_COPY="$aspect_fixed"
+            ASPECT_DONE=true
+            echo "  → Re-rendering with corrected layout..."
+            continue
+        fi
+        ASPECT_DONE=true
+    fi
+
+    if $A4_CHECK && ! $A4_TRIED; then
+        a4_rc=2
+        check_a4_fit "$OUTPUT_FILE" "$FORMAT" && a4_rc=0 || a4_rc=$?
+
+        if [[ "$a4_rc" -eq 2 ]]; then
+            echo "  ⓘ Could not determine image dimensions; skipping A4 check."
+            break
+        elif [[ "$a4_rc" -eq 1 ]]; then
+            FIX_ATTEMPT=$((FIX_ATTEMPT + 1))
+            if [[ "$FIX_ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]]; then
+                echo "  ⚠ Maximum fix attempts ($MAX_FIX_ATTEMPTS) reached; A4 fit may not hold."
+                break
+            fi
+
+            a4_fixed=$(fix_puml_a4_fit "$WORK_COPY") || {
+                echo "  ✗ A4 auto-fit failed; using current diagram."
+                break
+            }
+
+            if [[ -z "$a4_fixed" ]]; then
+                echo "  ✗ A4 auto-fit produced no output; using current diagram."
+                A4_TRIED=true
+                break
+            fi
+
+            if [[ "$WORK_COPY" != "$INPUT" ]]; then
+                rm -f "$WORK_COPY"
+            fi
+            WORK_COPY="$a4_fixed"
+            A4_TRIED=true
+            echo "  → Re-rendering with A4-fit scale..."
+            continue
+        fi
+    fi
+
+    break
 done
 
 # ── Cleanup temp files ───────────────────────────────────────────────────────
