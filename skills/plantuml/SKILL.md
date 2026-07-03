@@ -124,13 +124,13 @@ Use the bundled conversion script. Pick the variant that matches the current OS 
 **Linux, macOS, or Windows with a POSIX shell (Git Bash, MSYS2, WSL, Cygwin):**
 
 ```bash
-bash .opencode/skills/plantuml/scripts/generate-plantuml.sh <input.puml> <output_dir> --format <svg|png|pdf|txt>
+bash skills/plantuml/scripts/generate-plantuml.sh <input.puml> <output_dir> --format <svg|png|pdf|txt>
 ```
 
 **Windows native PowerShell (no bash required):**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .opencode\skills\plantuml\scripts\generate-plantuml.ps1 <input.puml> <output_dir> -Format <svg|png|pdf|txt>
+powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 <input.puml> <output_dir> -Format <svg|png|pdf|txt>
 ```
 
 Both scripts accept the same arguments and try three backends in **strict priority
@@ -819,7 +819,7 @@ skinparam classAttributeIconSize 0
   attribute visibility dots) have **no CSS equivalent yet** as of PlantUML 1.2026.x —
   keep them as `skinparam` lines beside the `<style>` block. This is the only place where
   the two systems must coexist.
-- One example file ships with the CSS preamble: [`examples/07_sequence_oauth2_css_style.puml`](../../../examples/07_sequence_oauth2_css_style.puml).
+- One example file ships with the CSS preamble: [`examples/07_sequence_oauth2_css_style.puml`](../../examples/07_sequence_oauth2_css_style.puml).
   All other example files keep the `skinparam` preamble for backward compatibility.
 
 ### CJK (Chinese/Japanese/Korean) Font Support
