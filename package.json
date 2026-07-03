@@ -15,14 +15,16 @@
     "diagram",
     "opencode",
     "skill",
-    "clawhub"
+    "clawhub",
+    "skills.sh"
   ],
   "files": [
-    ".opencode/skills/plantuml/"
+    "skills/plantuml/",
+    ".opencode/skills/plantuml"
   ],
   "scripts": {
-    "render": "bash .opencode/skills/plantuml/scripts/generate-plantuml.sh",
-    "render:ps": "powershell -ExecutionPolicy Bypass -File .opencode/skills/plantuml/scripts/generate-plantuml.ps1"
+    "render": "bash skills/plantuml/scripts/generate-plantuml.sh",
+    "render:ps": "powershell -ExecutionPolicy Bypass -File skills/plantuml/scripts/generate-plantuml.ps1"
   },
   "engines": {
     "opencode": ">=1.0.0"
