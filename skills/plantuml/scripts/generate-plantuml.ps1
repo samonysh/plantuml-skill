@@ -50,8 +50,15 @@
     Disable automatic aspect ratio correction. By default, diagrams wider or
     taller than the threshold are automatically corrected and re-rendered.
 
+.PARAMETER MinAspect
+    Minimum allowed width/height ratio before correction (default: 0.7).
+
 .PARAMETER MaxAspect
-    Maximum allowed aspect ratio before correction (default: 2.5).
+    Maximum allowed width/height ratio before correction (default: 1.4).
+
+.PARAMETER DarkMode
+    Also emit a dark companion image named <basename>.dark.<fmt>.
+    Supported for svg and png (png requires ImageMagick convert).
 
 .PARAMETER NoA4Check
     Disable automatic A4 paper fit validation. The A4 check ensures the
@@ -77,7 +84,10 @@
     .\generate-plantuml.ps1 diagram.puml .\out -Cjk -Format png
 
 .EXAMPLE
-    .\generate-plantuml.ps1 diagram.puml .\out -MaxAspect 3.0
+    .\generate-plantuml.ps1 diagram.puml .\out -MaxAspect 1.5 -MinAspect 0.6
+
+.EXAMPLE
+    .\generate-plantuml.ps1 diagram.puml .\out -Format svg -DarkMode
 
 .EXAMPLE
     # Opt in to remote rendering (uploads diagram to kroki.io)
@@ -107,13 +117,19 @@ param(
     [switch]$NoFix,
 
     [Parameter()]
-    [float]$MaxAspect = 2.5,
+    [float]$MinAspect = 0.7,
+
+    [Parameter()]
+    [float]$MaxAspect = 1.4,
 
     [Parameter()]
     [switch]$NoA4Check,
 
     [Parameter()]
     [float]$MinFontPt = 8.0,
+
+    [Parameter()]
+    [switch]$DarkMode,
 
     [Parameter()]
     [switch]$UsePublicServer
@@ -287,9 +303,20 @@ function Test-AspectRatio {
     }
     if (-not $w -or -not $h -or $w -le 0 -or $h -le 0) { return $null }
 
-    $ratio = if ($w -gt $h) { [math]::Round($w / $h, 2) } else { [math]::Round($h / $w, 2) }
-    Write-Host "  📐 Dimensions: ${w}x${h}, aspect ratio: ${ratio}:1 (max: ${MaxAspect}:1)"
-    return ($ratio -le $MaxAspect)
+    $ratio = [math]::Round($w / $h, 2)
+    Write-Host "  📐 Dimensions: ${w}x${h}, width/height: ${ratio} (band: ${MinAspect}-${MaxAspect})"
+    if ($ratio -lt $MinAspect) { return "too_tall" }
+    if ($ratio -gt $MaxAspect) { return "too_wide" }
+    return "ok"
+}
+
+function Get-DiagramType {
+    param([string]$PumlPath)
+    $content = Get-Content -LiteralPath $PumlPath -Encoding UTF8 -Raw
+    if ($content -match '(?im)^\s*(start\s*\r?\n|:[^\r\n]+;|if\s*\()') { return "activity" }
+    if ($content -match '(?im)^\s*state\s+') { return "state" }
+    if ($content -match '(?im)^\s*(participant|actor|->|--)\s+') { return "sequence" }
+    return "other"
 }
 
 function Fix-PumlAspectRatio {
@@ -303,28 +330,59 @@ function Fix-PumlAspectRatio {
         return $null
     }
 
-    $tmpPath = "${PumlPath}.fixed"
-    $content = $content -replace '@startuml', "@startuml`n!pragma aspectRatioFixed"
+    $tmpPath = "${PumlPath}.fixed.puml"
 
-    if ($Problem -eq "too_tall") {
-        $content = $content -replace '@startuml', "@startuml`nleft to right direction"
-        Write-Host "  → Applied: left to right direction"
-        $content = $content -replace 'skinparam StereotypeCBackgroundColor white',
-            "skinparam StereotypeCBackgroundColor white`nskinparam ParticipantPadding 5"
-    } else {
-        if ($content -match "left to right direction") {
-            $content = $content -replace "left to right direction`r?`n", ""
+    $lines = $content -split "`r?`n"
+    $pragmaLine = "!pragma aspectRatioFixed"
+    $spacingBlock = @(
+        "skinparam Padding 8",
+        "skinparam BoxPadding 8",
+        "skinparam ParticipantPadding 8",
+        "skinparam MinClassWidth 100",
+        "skinparam WrapWidth 220",
+        "skinparam NodeSep 35",
+        "skinparam RankSep 35"
+    )
+
+    $hasPragma = $false
+    $outLines = [System.Collections.Generic.List[string]]::new()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line -match '^!pragma aspectRatioFixed') { $hasPragma = $true }
+        $outLines.Add($line)
+        if ($line -match '^@startuml') {
+            $outLines.Add($pragmaLine)
+            foreach ($sl in $spacingBlock) {
+                if ($content -notmatch [regex]::Escape($sl)) {
+                    $outLines.Add($sl)
+                }
+            }
         }
-        $content = $content -replace '@startuml', "@startuml`ntop to bottom direction"
-        Write-Host "  → Applied: top to bottom direction"
-        $content = $content -replace 'skinparam StereotypeCBackgroundColor white',
-            "skinparam StereotypeCBackgroundColor white`nskinparam BoxPadding 5`nskinparam ParticipantPadding 5"
     }
 
-    if ($content -notmatch '^scale ') {
-        $content = $content -replace 'skinparam StereotypeCBackgroundColor white',
-            "skinparam StereotypeCBackgroundColor white`nscale 0.8"
-        Write-Host "  → Applied: scale 0.8"
+    $content = $outLines -join "`n"
+
+    $diagramType = Get-DiagramType $PumlPath
+    $directionSafe = $diagramType -notin @("activity", "sequence", "state")
+
+    if ($directionSafe -and $Problem -eq "too_tall") {
+        if ($content -match "top to bottom direction") {
+            $content = $content -replace "(?m)^top to bottom direction\r?\n", ""
+        }
+        if ($content -notmatch "left to right direction") {
+            $content = $content -replace '(?m)^@enduml\s*$', "left to right direction`n@enduml"
+        }
+        Write-Host "  → Applied: left to right direction"
+    } elseif ($directionSafe -and $Problem -eq "too_wide") {
+        if ($content -match "left to right direction") {
+            $content = $content -replace "(?m)^left to right direction\r?\n", ""
+        }
+        if ($content -notmatch "top to bottom direction") {
+            $content = $content -replace '(?m)^@enduml\s*$', "top to bottom direction`n@enduml"
+        }
+        Write-Host "  → Applied: top to bottom direction"
+    } else {
+        Write-Host "  → Direction change skipped for ${diagramType} diagram; using spacing guards only"
     }
 
     Set-Content -LiteralPath $tmpPath -Value $content -Encoding UTF8 -NoNewline
@@ -390,11 +448,11 @@ function Fix-A4Fit {
     $content = Get-Content -LiteralPath $PumlPath -Encoding UTF8 -Raw
     if ($content -match '!pragma a4FitFixed') { return $null }
 
-    $tmpPath = "${PumlPath}.a4fixed"
+    $tmpPath = "${PumlPath}.a4fixed.puml"
     $content = $content -replace '^@startuml', "@startuml`n!pragma a4FitFixed"
 
-    $content = $content -replace '(?m)^scale 0\.8\r?\n', ''
-    $content = $content -replace '!pragma a4FitFixed', "!pragma a4FitFixed`n scale $($script:a4ScaleFactor)"
+    $content = $content -replace '(?m)^scale [0-9.]+\r?\n', ''
+    $content = $content -replace '!pragma a4FitFixed', "!pragma a4FitFixed`nscale $($script:a4ScaleFactor)"
     Write-Host "  → Applied: scale $($script:a4ScaleFactor) (A4 fit)"
 
     $effectivePt = [math]::Round($script:a4ScaleFactor * $script:defaultFontPx * 0.75, 1)
@@ -408,6 +466,89 @@ function Fix-A4Fit {
 
     Set-Content -LiteralPath $tmpPath -Value $content -Encoding UTF8 -NoNewline
     return $tmpPath
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Dark-mode post-processing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+function New-DarkSvg {
+    param([string]$LightPath, [string]$DarkPath)
+    if (-not (Test-Path -LiteralPath $LightPath)) { return $false }
+    try {
+        $content = Get-Content -LiteralPath $LightPath -Encoding UTF8 -Raw
+        # Canvas (root rect at 0,0)
+        $content = $content -replace '(<rect[^>]+fill=")#FFFFFF("[^>]+x="0"[^>]*>)', '${1}#1A1A1A${2}'
+        # Light element fills (SVG attributes)
+        $content = $content -replace '(<[^>]+fill=")#FFFFFF("[^>]*>)', '${1}#2D2D2D${2}'
+        $content = $content -replace '(<[^>]+fill=")#FAFAFA("[^>]*>)', '${1}#2D2D2D${2}'
+        $content = $content -replace '(<[^>]+fill=")#F1F1F1("[^>]*>)', '${1}#2D2D2D${2}'
+        $content = $content -replace '(<[^>]+fill=")#F2F2F2("[^>]*>)', '${1}#2D2D2D${2}'
+        $content = $content -replace '(<[^>]+fill=")#222222("[^>]*>)', '${1}#C0C0C0${2}'
+        # Text (SVG attributes)
+        $content = $content -replace '(<[^>]+fill=")#000000("[^>]*>)', '${1}#E8E8E8${2}'
+        $content = $content -replace '(<[^>]+fill=")#181818("[^>]*>)', '${1}#C0C0C0${2}'
+        # Strokes (SVG attributes)
+        $content = $content -replace '(<[^>]+stroke=")#222222("[^>]*>)', '${1}#C0C0C0${2}'
+        $content = $content -replace '(<[^>]+stroke=")#181818("[^>]*>)', '${1}#C0C0C0${2}'
+        $content = $content -replace '(<[^>]+stroke=")#000000("[^>]*>)', '${1}#C0C0C0${2}'
+        $content = $content -replace '(<[^>]+stroke=")#FFFFFF("[^>]*>)', '${1}#C0C0C0${2}'
+        # Inline CSS styles (style="...")
+        $content = $content -replace 'background:#FFFFFF', 'background:#1A1A1A'
+        $content = $content -replace 'background: #FFFFFF', 'background: #1A1A1A'
+        $content = $content -replace 'stroke:#222222', 'stroke:#C0C0C0'
+        $content = $content -replace 'stroke:#181818', 'stroke:#C0C0C0'
+        $content = $content -replace 'stroke:#000000', 'stroke:#C0C0C0'
+        $content = $content -replace 'stroke:#FFFFFF', 'stroke:#C0C0C0'
+        $content = $content -replace 'stroke: #222222', 'stroke: #C0C0C0'
+        $content = $content -replace 'stroke: #181818', 'stroke: #C0C0C0'
+        $content = $content -replace 'stroke: #000000', 'stroke: #C0C0C0'
+        $content = $content -replace 'stroke: #FFFFFF', 'stroke: #C0C0C0'
+        $content = $content -replace 'fill:#222222', 'fill:#C0C0C0'
+        $content = $content -replace 'fill:#181818', 'fill:#C0C0C0'
+        $content = $content -replace 'fill:#000000', 'fill:#E8E8E8'
+        $content = $content -replace 'fill: #222222', 'fill: #C0C0C0'
+        $content = $content -replace 'fill: #181818', 'fill: #C0C0C0'
+        $content = $content -replace 'fill: #000000', 'fill: #E8E8E8'
+        $content = $content -replace 'fill:#FAFAFA', 'fill:#2D2D2D'
+        $content = $content -replace 'fill:#F1F1F1', 'fill:#2D2D2D'
+        $content = $content -replace 'fill:#F2F2F2', 'fill:#2D2D2D'
+        $content = $content -replace 'fill: #FAFAFA', 'fill: #2D2D2D'
+        $content = $content -replace 'fill: #F1F1F1', 'fill: #2D2D2D'
+        $content = $content -replace 'fill: #F2F2F2', 'fill: #2D2D2D'
+        Set-Content -LiteralPath $DarkPath -Value $content -Encoding UTF8 -NoNewline
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function New-DarkPng {
+    param([string]$LightPath, [string]$DarkPath)
+    if (-not (Test-Path -LiteralPath $LightPath)) { return $false }
+    if (-not (Test-Command "convert")) { return $false }
+    try {
+        & convert $LightPath `
+            -fuzz 25% -fill '#1A1A1A' -opaque '#FFFFFF' `
+            -fuzz 25% -fill '#2D2D2D' -opaque '#FAFAFA' `
+            -fuzz 25% -fill '#2D2D2D' -opaque '#F1F1F1' `
+            -fuzz 25% -fill '#2D2D2D' -opaque '#F2F2F2' `
+            -fuzz 25% -fill '#C0C0C0' -opaque '#222222' `
+            -fuzz 25% -fill '#C0C0C0' -opaque '#181818' `
+            -fuzz 25% -fill '#E8E8E8' -opaque '#000000' `
+            $DarkPath 2>$null
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $DarkPath)) { return $true }
+    } catch { }
+    return $false
+}
+
+function New-DarkImage {
+    param([string]$LightPath, [string]$Fmt)
+    if ($Fmt -notin @("svg", "png")) { return $null }
+    $darkPath = $LightPath -replace "\.$Fmt$", ".dark.$Fmt"
+    $ok = if ($Fmt -eq "svg") { New-DarkSvg $LightPath $darkPath } else { New-DarkPng $LightPath $darkPath }
+    if ($ok) { return $darkPath }
+    return $null
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -601,16 +742,32 @@ function Convert-ViaLocal {
 
     Write-Host "  → Trying local JAR ($jar)..."
     $ext = if ($Format -eq "txt") { "utxt" } else { $Format }
+    $tmpRender = Join-Path ([System.IO.Path]::GetTempPath()) ("plantuml_local_" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $tmpRender -Force | Out-Null
     try {
+        Copy-Item -LiteralPath $SourcePath -Destination $tmpRender -Force
+        $inputFileName = [System.IO.Path]::GetFileName($SourcePath)
         $proc = Start-Process -FilePath "java" -ArgumentList @(
-            "-jar", "`"$jar`"", "-t$ext", "-o", "`"$OutputDir`"", "`"$SourcePath`""
+            "-jar", "`"$jar`"", "-t$ext", "-o", "`"$tmpRender`"", "`"$tmpRender\$inputFileName`""
         ) -NoNewWindow -Wait -PassThru
         if ($proc.ExitCode -eq 0) {
-            Write-Host "  ✓ Success (local JAR)"
-            return $true
+            $baseSrc = [System.IO.Path]::GetFileNameWithoutExtension($inputFileName)
+            $generated = Get-ChildItem -Path $tmpRender -Filter "$baseSrc.$ext" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $generated) {
+                $generated = Get-ChildItem -Path $tmpRender -Filter "$baseSrc.$Format" -ErrorAction SilentlyContinue | Select-Object -First 1
+            }
+            if ($generated) {
+                Move-Item -LiteralPath $generated.FullName -Destination $outputFile -Force
+                Write-Host "  ✓ Success (local JAR)"
+                return $true
+            }
         }
     } catch {
         # fall through
+    } finally {
+        if (Test-Path -LiteralPath $tmpRender) {
+            Remove-Item -LiteralPath $tmpRender -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
     Write-Host "  ✗ Local JAR failed"
     return $false
@@ -645,10 +802,11 @@ if ($Cjk) {
 
 # ── Render with aspect-ratio + A4-fit correction loop ────────────────────────
 $renderOk = $false
-$maxFixAttempts = 2
+$maxFixAttempts = 3
 $fixAttempt = 0
 $aspectDone = $false
 $a4Tried = $false
+$lastOkSrc = $workCopy
 
 while ($fixAttempt -le $maxFixAttempts) {
     # Render using the current working copy (local-first: Docker → JAR → opt-in server)
@@ -669,28 +827,25 @@ while ($fixAttempt -le $maxFixAttempts) {
         }
     }
     $renderOk = $true
+    $lastOkSrc = $workCopy
 
     if ($Format -in @("txt", "pdf")) { break }
 
     if (-not $NoFix -and -not $aspectDone) {
-        $aspectOk = Test-AspectRatio $outputFile $Format
-        if ($null -eq $aspectOk) {
+        $aspectProblem = Test-AspectRatio $outputFile $Format
+        if ($null -eq $aspectProblem) {
             Write-Host "  ⓘ Could not determine image dimensions; skipping aspect ratio check."
             $aspectDone = $true
-        } elseif (-not $aspectOk) {
+        } elseif ($aspectProblem -ne "ok") {
             $fixAttempt++
             if ($fixAttempt -gt $maxFixAttempts) {
                 Write-Host "  ⚠ Maximum fix attempts ($maxFixAttempts) reached. Manual adjustment may be needed."
                 break
             }
 
-            $w = if ($Format -eq "svg") { $script:svgWidth } else { $script:pngWidth }
-            $h = if ($Format -eq "svg") { $script:svgHeight } else { $script:pngHeight }
-            $problem = if ($h -gt $w) { "too_tall" } else { "too_wide" }
-
-            $fixedPuml = Fix-PumlAspectRatio $workCopy $problem
+            $fixedPuml = Fix-PumlAspectRatio $workCopy $aspectProblem
             if (-not $fixedPuml) {
-                Write-Host "  ✗ Auto-fix failed; using original diagram."
+                Write-Host "  ✗ Auto-fix step failed; keeping current output." >&2
                 break
             }
 
@@ -698,7 +853,6 @@ while ($fixAttempt -le $maxFixAttempts) {
                 Remove-Item -LiteralPath $workCopy -Force -ErrorAction SilentlyContinue
             }
             $workCopy = $fixedPuml
-            $aspectDone = $true
             Write-Host "  → Re-rendering with corrected layout..."
             continue
         }
@@ -737,6 +891,22 @@ while ($fixAttempt -le $maxFixAttempts) {
     break
 }
 
+# Ensure we keep the last successful output if the final fix attempt did not re-render.
+if ($workCopy -ne $lastOkSrc -and (Test-Path -LiteralPath $lastOkSrc)) {
+    $workCopy = $lastOkSrc
+}
+
+# ── Dark-mode companion ──────────────────────────────────────────────────────
+$darkOutput = $null
+if ($DarkMode -and $renderOk -and $Format -in @("svg", "png")) {
+    $darkOutput = New-DarkImage $outputFile $Format
+    if ($darkOutput) {
+        Write-Host "  🌙 Dark mode: $darkOutput"
+    } else {
+        Write-Host "  ⚠ Dark-mode companion could not be generated for $Format"
+    }
+}
+
 # ── Cleanup temp files ───────────────────────────────────────────────────────
 if ($workCopy -ne $InputPath) {
     Remove-Item -LiteralPath $workCopy -Force -ErrorAction SilentlyContinue
@@ -749,5 +919,6 @@ if ($cjkCopy -and $cjkCopy -ne $workCopy) {
 if ($renderOk) {
     Write-Host ""
     Write-Host "✅ Output: $outputFile"
+    if ($darkOutput) { Write-Host "✅ Dark:   $darkOutput" }
     Write-Output $outputFile
 }

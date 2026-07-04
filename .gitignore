@@ -2,6 +2,10 @@
 node_modules/
 .opencode/node_modules/
 
+# Local build artifacts
+plantuml.jar
+.omo/
+
 # Generated output (diagram renders)
 output/
 

@@ -1,7 +1,7 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.4.1
+version: 1.5.0
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
@@ -49,7 +49,7 @@ No exceptions unless the user explicitly requests otherwise.
 - **Abstract classifiers in italics**: Per UML 2.5 §9 and uml-diagrams.org "Name of an abstract classifier is shown in italics" — using the `<<abstract>>` text stereotype with `strictuml` produces the correct italic rendering automatically.
 - **No 3D effects**: Drop shadows MUST be disabled (`skinparam shadowing false`).
 - **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles. When CJK characters are present, use `--cjk` flag to switch to a CJK-compatible font (see [CJK Font Support](#cjk-chinesejapanesekorean-font-support)).
-- **Aspect ratio**: Generated diagrams are automatically validated for extreme aspect ratios. If a diagram is excessively wide or tall (exceeding 2.5:1 by default), the renderer applies layout corrections and re-renders. Use `--no-fix` to disable this behavior (see Step 3).
+- **Aspect ratio**: Generated diagrams are automatically validated for an aspect-ratio band. By default the renderer tries to keep width/height between **0.7 and 1.4** (a comfortable page-like shape), re-rendering with layout corrections when the output falls outside that band. Diagrams that cannot be fixed safely after a few attempts are kept with a warning, so unusual diagrams are not destroyed. Use `--no-fix` to disable this behavior (see Step 3).
 - **A4 paper fit**: After aspect-ratio validation passes, the diagram is checked against A4 paper (210×297 mm). At the **96 DPI CSS standard**, this works out to **794×1123 px portrait** and **1123×794 px landscape**. The renderer accepts the diagram if it fits in EITHER orientation; otherwise it injects a computed PlantUML `scale N` directive and re-renders up to once. The default body font of 12 px (from the mandatory preamble) shrinks proportionally; if the estimated on-paper font drops below `--min-font-pt` (default **8 pt**), the script prints a legibility warning — at that point no further down-scaling helps and the user must split the diagram or abbreviate labels. A4 fit is **ON by default**; disable with `--no-a4-check` (`-NoA4Check` on PowerShell).
 - **Standard UML shapes**:
   - Actors are **stick figures** (never Visio icons or images).
@@ -169,21 +169,36 @@ The `--cjk` flag:
   - Fedora: `sudo dnf install wqy-zenhei-fonts`
   - macOS: CJK fonts are pre-installed (PingFang SC)
 
-**Aspect ratio validation**: After rendering (SVG or PNG), the script automatically checks the image dimensions. If the aspect ratio exceeds `--max-aspect` (default: 2.5:1), the script applies corrective layout directives and re-renders:
+**Aspect ratio validation**: After rendering (SVG or PNG), the script measures width/height and checks whether it sits inside the configured band. The default band is **0.7–1.4** (width/height), i.e. diagrams should be neither extremely tall nor extremely wide. If the output falls outside the band, the script injects layout corrections and re-renders:
 
-- **Too tall**: Applies `left to right direction` and reduces sequence diagram padding
-- **Too wide**: Applies `top to bottom direction`, removes left-to-right direction, and applies `scale 0.8`
-- Maximum 2 correction attempts before giving up
+- **Too tall** (width/height < `--min-aspect`): applies `left to right direction` and adds spacing guards so labels do not crowd.
+- **Too wide** (width/height > `--max-aspect`): applies `top to bottom direction` and adds spacing guards.
+- Sequence, activity, and state diagrams skip the direction directive because it is either unsupported or counter-productive for those diagram types; only spacing guards are applied.
+- Up to 3 correction attempts are made. If a diagram still cannot be brought into the band (for example a very narrow use-case or state machine), the script keeps the best output and prints a warning rather than forcing an unusable layout.
+
+Spacing guards added during auto-fix include `Padding`, `BoxPadding`, `ParticipantPadding`, `MinClassWidth`, `WrapWidth`, `NodeSep`, and `RankSep`. These prevent text from becoming cramped when the layout is re-directed.
 
 To disable automatic correction:
 ```bash
 bash generate-plantuml.sh diagram.puml ./output --no-fix
 ```
 
-To set a custom aspect ratio threshold:
+To set a custom band:
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --max-aspect 3.0
+bash generate-plantuml.sh diagram.puml ./output --min-aspect 0.6 --max-aspect 1.5
 ```
+
+**Dark mode (opt-in)**: The default output follows the strict uml-diagrams.org black-and-white style. When the user explicitly asks for a dark variant, add `--dark-mode` (Bash) or `-DarkMode` (PowerShell). This emits **both** the regular light output and a dark companion named `<basename>.dark.<fmt>`:
+
+```bash
+bash generate-plantuml.sh diagram.puml ./output --format svg --dark-mode
+```
+
+Behaviour:
+- Light output is rendered normally with the monochrome preamble.
+- The dark companion is produced by post-processing the rendered light image, so PlantUML's `monochrome true` setting does not override the dark palette.
+- SVG is fully supported. PNG is supported when ImageMagick `convert` is available. PDF/TXT dark companions are not generated because there is no reliable local post-processor.
+- The dark palette uses `#1A1A1A` canvas, `#2D2D2D` element fills, `#E8E8E8` text, and `#C0C0C0` strokes.
 
 **A4 paper fit validation**: After the aspect-ratio check passes, the render script validates the diagram's pixel dimensions against A4 paper. PlantUML writes SVG in CSS pixels at the 96 DPI standard, so A4 (210×297 mm = 8.27×11.69 in) maps to **794×1123 px portrait** or **1123×794 px landscape**. The check is **ON by default** and runs right after the aspect check.
 
@@ -196,8 +211,12 @@ Flags:
 
 | Flag (Bash) | Flag (PowerShell) | Purpose | Default |
 |---|---|---|---|
+| `--no-fix` | `-NoFix` | Disable automatic aspect-ratio correction | off (correction ON) |
+| `--min-aspect N` | `-MinAspect N` | Lower bound of acceptable width/height band | `0.7` |
+| `--max-aspect N` | `-MaxAspect N` | Upper bound of acceptable width/height band | `1.4` |
 | `--no-a4-check` | `-NoA4Check` | Disable A4 fit validation entirely | off (check ON) |
 | `--min-font-pt N` | `-MinFontPt N` | Minimum legible on-paper font size in pt | `8.0` |
+| `--dark-mode` | `-DarkMode` | Also emit a dark companion (`<basename>.dark.<fmt>`) | off |
 
 Examples:
 ```bash
@@ -206,12 +225,16 @@ bash generate-plantuml.sh diagram.puml ./output --no-a4-check
 
 # Tighten legibility threshold (warn if effective font drops below 10 pt)
 bash generate-plantuml.sh diagram.puml ./output --min-font-pt 10
+
+# Allow narrower diagrams and also emit a dark SVG companion
+bash generate-plantuml.sh diagram.puml ./output --format svg --min-aspect 0.5 --dark-mode
 ```
 
 ```powershell
 # PowerShell equivalents
 powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -NoA4Check
 powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -MinFontPt 10
+powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -Format svg -MinAspect 0.5 -DarkMode
 ```
 
 A4 fit is skipped automatically for `txt` and `pdf` output (TXT has no image dimensions; PDF is already a print-oriented format the PlantUML renderer pages itself). The check shares the same 2-attempt auto-fix budget as aspect-ratio correction — running both does not double the cap.

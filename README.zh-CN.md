@@ -7,7 +7,7 @@
 [![skills.sh](https://skills.sh/b/samonysh/plantuml-skill)](https://skills.sh/samonysh/plantuml-skill)
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.4.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.5.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## 特性
@@ -21,8 +21,9 @@
 - **文本 stereotype**：使用 `«interface»` / `«abstract»` 文本，不用带字母的彩色圆圈图标
 - **零配色**：纯黑白输出，适合学术论文、RFC、技术文档等场景
 - **CJK 字体支持**：通过 `--cjk` 标志支持中文、日文、韩文字符渲染
-- **宽高比自动修正**：检测并自动修复过宽或过高的图表
+- **宽高比自动修正**：检测并自动修复过宽或过高的图表（默认目标宽高比 0.7–1.4）
 - **A4 纸张适配**：确保图表适配 A4 纸张尺寸（96 DPI 下 794×1123 px），保证打印时字体可读
+- **暗色模式**：通过 `--dark-mode` 标志同时输出亮色和暗色两个版本（`.dark.svg` / `.dark.png`）
 
 ## 环境要求
 
@@ -114,7 +115,9 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 | `--no-fix` | 禁用宽高比自动修正 | 关闭（自动修正） |
 | `--no-a4-check` | 禁用 A4 纸张适配检查（96 DPI 下人像 794×1123 px） | 关闭（默认开启检查） |
 | `--min-font-pt N` | A4 纸上最小可读字号（pt） | `8.0` |
-| `--max-aspect N` | 宽高比阈值上限 | `2.5` |
+| `--min-aspect N` | 宽高比下限（过高图表自动修正） | `0.7` |
+| `--max-aspect N` | 宽高比上限（过宽图表自动修正） | `1.4` |
+| `--dark-mode` | 同时输出亮色 + 暗色版本（`.dark.svg`/`.dark.png`）；需显式启用 | 关闭 |
 
 ## 支持的图表类型
 
@@ -292,13 +295,13 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 
 ### 宽高比自动修正
 
-渲染 SVG 或 PNG 输出后，脚本会检查图像尺寸。若宽高比（宽度/高度 或 高度/宽度）超过 `--max-aspect`（默认 2.5:1），脚本会：
+渲染 SVG 或 PNG 输出后，脚本会检查图像尺寸。若宽高比（宽度/高度）超出目标范围（默认 0.7–1.4），脚本会：
 
-1. 对 `.puml` 文件应用布局修正指令（`left to right direction`、`top to bottom direction`、`scale`、间距调整）
+1. 对 `.puml` 文件应用布局修正指令（方向切换、间距调整）
 2. 重新渲染图表
 3. 再次检查（最多进行 2 次修正尝试）
 
-这样可以避免图表在某个方向上过度拉伸。
+使用 `--min-aspect` 和 `--max-aspect` 可自定义目标范围。修正过程中会保留文本间距，避免文字拥挤。
 
 ## 隐私说明
 
@@ -342,7 +345,7 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 运行时隐私警告会显示解析后的目标主机，便于上传前确认流向。自定义主机需要暴露
 标准的 Kroki 端点形式：`<base>/plantuml/<format>`。
 
-### 为什么是 Kroki（v1.4.1）
+### 为什么是 Kroki（v1.5.0）
 
 早期版本的脚本使用 `https://www.plantuml.com/plantuml`。该端点目前位于
 Cloudflare + Ezoic 同意墙之后（POST 会被 302 重定向到一个纯 JavaScript 渲染的

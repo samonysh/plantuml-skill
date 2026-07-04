@@ -8,7 +8,8 @@
 #   --format svg|png|pdf|txt    Output format (default: svg)
 #   --cjk                       Enable CJK (Chinese/Japanese/Korean) font support
 #   --no-fix                    Disable automatic aspect ratio correction
-#   --max-aspect N              Max allowed aspect ratio before correction (default: 2.5)
+#   --min-aspect N              Min allowed width/height ratio before correction (default: 0.7)
+#   --max-aspect N              Max allowed width/height ratio before correction (default: 1.4)
 #   --no-a4-check               Disable automatic A4 paper fit validation
 #                               The A4 check ensures the rendered diagram fits within
 #                               either portrait (794×1123 px @ 96 DPI) or landscape
@@ -59,8 +60,10 @@ OUTPUT_DIR="./output"
 FORMAT="svg"
 CJK=false
 AUTO_FIX=true
-MAX_ASPECT=2.5
+MIN_ASPECT=0.7
+MAX_ASPECT=1.4
 A4_CHECK=true
+DARK_MODE=false
 MIN_FONT_PT=8.0
 USE_PUBLIC_SERVER=false
 
@@ -91,12 +94,24 @@ while [[ $# -gt 0 ]]; do
             AUTO_FIX=false
             shift
             ;;
+        --min-aspect)
+            MIN_ASPECT="${2:-0.7}"
+            shift 2
+            ;;
+        --min-aspect=*)
+            MIN_ASPECT="${1#*=}"
+            shift
+            ;;
         --max-aspect)
-            MAX_ASPECT="${2:-2.5}"
+            MAX_ASPECT="${2:-1.4}"
             shift 2
             ;;
         --max-aspect=*)
             MAX_ASPECT="${1#*=}"
+            shift
+            ;;
+        --dark-mode)
+            DARK_MODE=true
             shift
             ;;
         --no-a4-check)
@@ -122,8 +137,10 @@ while [[ $# -gt 0 ]]; do
             echo "  --format svg|png|pdf|txt    Output format (default: svg)"
             echo "  --cjk                       Enable CJK (Chinese/Japanese/Korean) font support"
             echo "  --no-fix                    Disable automatic aspect ratio correction"
-            echo "  --max-aspect N              Max aspect ratio before correction (default: 2.5)"
-            echo "  --no-a4-check               Disable A4 paper fit validation (ON by default)"
+            echo "  --min-aspect N              Min width/height ratio before correction (default: 0.7)"
+            echo "  --max-aspect N              Max width/height ratio before correction (default: 1.4)"
+            echo "  --dark-mode                 Also emit a dark-themed variant (<name>.dark.<fmt>)"
+            echo "  --no-a4-check               Disable automatic A4 paper fit validation (ON by default)"
             echo "  --min-font-pt N             Min legible font size on A4 paper in pt"
             echo "                              (default: 8.0). Used only when A4 check is on."
             echo "  --use-public-server         OPT-IN: render via Kroki (kroki.io). Uploads"
@@ -318,13 +335,16 @@ get_png_dimensions() {
     [[ -n "$PNG_WIDTH" ]] && [[ -n "$PNG_HEIGHT" ]]
 }
 
-# check_aspect_ratio — Validate aspect ratio against max threshold
+# check_aspect_ratio — Validate width/height ratio sits inside [MIN_ASPECT, MAX_ASPECT]
 # Arguments: $1=image_file, $2=format (svg|png)
 # Returns: 0 if OK, 1 if needs fixing, 2 if check failed (can't determine dimensions)
+# Side effects: sets CHECKED_ASPECT_PROBLEM to too_tall|too_wide|ok
 check_aspect_ratio() {
     local img="$1"
     local fmt="$2"
     local w h
+
+    CHECKED_ASPECT_PROBLEM="ok"
 
     case "$fmt" in
         svg)
@@ -345,70 +365,194 @@ check_aspect_ratio() {
     fi
 
     local ratio
-    if [[ "$w" -gt "$h" ]]; then
-        ratio=$(awk "BEGIN {printf \"%.2f\", $w / $h}")
-    else
-        ratio=$(awk "BEGIN {printf \"%.2f\", $h / $w}")
-    fi
+    ratio=$(awk "BEGIN {printf \"%.2f\", $w / $h}")
 
-    echo "  📐 Dimensions: ${w}x${h}, aspect ratio: ${ratio}:1 (max: ${MAX_ASPECT}:1)"
+    echo "  📐 Dimensions: ${w}x${h}, width/height ratio: ${ratio} (target ${MIN_ASPECT}–${MAX_ASPECT})"
 
-    if awk "BEGIN {exit !($ratio > $MAX_ASPECT)}" 2>/dev/null; then
-        echo "  ⚠ Aspect ratio ${ratio}:1 exceeds maximum ${MAX_ASPECT}:1 — diagram may appear stretched"
+    if awk "BEGIN {exit !($ratio < $MIN_ASPECT)}" 2>/dev/null; then
+        echo "  ⚠ Aspect ratio ${ratio} is below minimum ${MIN_ASPECT} — diagram is too tall"
+        CHECKED_ASPECT_PROBLEM="too_tall"
         return 1
     fi
+
+    if awk "BEGIN {exit !($ratio > $MAX_ASPECT)}" 2>/dev/null; then
+        echo "  ⚠ Aspect ratio ${ratio} exceeds maximum ${MAX_ASPECT} — diagram is too wide"
+        CHECKED_ASPECT_PROBLEM="too_wide"
+        return 1
+    fi
+
     return 0
 }
 
+# Spacing skinparams injected during aspect-ratio auto-fix to keep text readable
+SPACING_GUARD_SKINPARAMS="skinparam Padding 8
+skinparam BoxPadding 8
+skinparam ParticipantPadding 8
+skinparam MinClassWidth 100
+skinparam WrapWidth 220
+skinparam NodeSep 35
+skinparam RankSep 35"
+
 # fix_puml_aspect_ratio — Modify .puml file to improve aspect ratio
 # Arguments: $1=puml_file, $2=too_wide|too_tall
-# Returns: 0 on success, 1 on failure
+# Returns: path to modified .puml on stdout, empty string on failure.
+# stdout must stay clean because callers capture it via $(...); logs go to stderr.
 fix_puml_aspect_ratio() {
     local puml="$1"
     local problem="$2"
-    local tmp="${puml}.fixed"
+    local tmp="${puml%.puml}.fixed.puml"
 
-    echo "  → Attempting to fix aspect ratio (${problem})..."
+    echo "  → Attempting to fix aspect ratio (${problem})..." >&2
     cp "$puml" "$tmp"
 
     if grep -q '!pragma aspectRatioFixed' "$puml" 2>/dev/null; then
-        echo "  → Already auto-fixed; skipping further attempts"
+        echo "  → Already auto-fixed; skipping further attempts" >&2
         rm -f "$tmp"
+        echo ""
         return 1
     fi
 
+    # Inject pragma and spacing guards right after @startuml so they take effect early
     sed -i '1s/^@startuml/@startuml\n!pragma aspectRatioFixed/' "$tmp"
 
+    # Insert multi-line spacing guard block after the pragma (sed 'a' with
+    # embedded newlines is brittle, so write the block to a temp file and use
+    # the 'r'ead command).
+    local spacing_tmp="${tmp}.spacing"
+    printf '%s\n' "$SPACING_GUARD_SKINPARAMS" > "$spacing_tmp"
+    sed -i '/!pragma aspectRatioFixed/r '"$spacing_tmp" "$tmp"
+    rm -f "$spacing_tmp"
+    echo "  → Applied: spacing guards (Padding, BoxPadding, ParticipantPadding, MinClassWidth, WrapWidth, NodeSep, RankSep)" >&2
+
+    # Direction directives help class/usecase/component diagrams, but they can
+    # break activity diagrams (after start/stop), are redundant for sequence
+    # diagrams, and often make complex state diagrams worse.  Only inject them
+    # when the source looks safe.
+    local is_activity is_sequence is_state
+    is_activity=false
+    is_sequence=false
+    is_state=false
+    if grep -qE '^[[:space:]]*(start|stop)[[:space:]]*$' "$tmp" || \
+       grep -qE '^[[:space:]]*:[^;]+;' "$tmp"; then
+        is_activity=true
+    fi
+    if grep -qE '^[[:space:]]*participant[[:space:]]' "$tmp"; then
+        is_sequence=true
+    fi
+    if grep -qE '^[[:space:]]*state[[:space:]]' "$tmp"; then
+        is_state=true
+    fi
+
     if [[ "$problem" == "too_tall" ]]; then
-        if grep -q '@startuml' "$tmp"; then
-            sed -i '/@startuml/a\left to right direction' "$tmp"
-            echo "  → Applied: left to right direction"
-        fi
-        if grep -qE '(participant|actor.*->)' "$tmp"; then
-            sed -i '/skinparam StereotypeCBackgroundColor white/a\
-skinparam ParticipantPadding 5' "$tmp"
+        sed -i '/top to bottom direction/d' "$tmp"
+        if ! $is_activity && ! $is_sequence && ! $is_state && ! grep -q 'left to right direction' "$tmp"; then
+            if grep -q '^@enduml' "$tmp"; then
+                sed -i '/^@enduml/i\left to right direction' "$tmp"
+            else
+                echo "left to right direction" >> "$tmp"
+            fi
+            echo "  → Applied: left to right direction" >&2
         fi
     else
         sed -i '/left to right direction/d' "$tmp"
-        if grep -q '@startuml' "$tmp"; then
-            sed -i '/@startuml/a\top to bottom direction' "$tmp"
-            echo "  → Applied: top to bottom direction"
+        if ! $is_activity && ! $is_sequence && ! $is_state && ! grep -q 'top to bottom direction' "$tmp"; then
+            if grep -q '^@enduml' "$tmp"; then
+                sed -i '/^@enduml/i\top to bottom direction' "$tmp"
+            else
+                echo "top to bottom direction" >> "$tmp"
+            fi
+            echo "  → Applied: top to bottom direction" >&2
         fi
-        if grep -qE '(participant|actor.*->)' "$tmp"; then
-            sed -i '/skinparam StereotypeCBackgroundColor white/a\
-skinparam BoxPadding 5\
-skinparam ParticipantPadding 5' "$tmp"
-        fi
-    fi
-
-    if ! grep -q '^scale ' "$tmp"; then
-        sed -i '/skinparam StereotypeCBackgroundColor white/a\
-scale 0.8' "$tmp"
-        echo "  → Applied: scale 0.8"
     fi
 
     echo "$tmp"
     return 0
+}
+
+# Dark-mode post-processing
+# PlantUML's 'monochrome true' overrides most explicit font/border skinparams,
+# so the most reliable dark variant is produced by post-processing the already
+# rendered light image rather than re-rendering a recoloured .puml.
+
+# postprocess_dark_svg — Recolor a light SVG into a dark-themed SVG
+# Arguments: $1=light_svg_path, $2=dark_svg_path
+postprocess_dark_svg() {
+    local light="$1"
+    local dark="$2"
+
+    cp "$light" "$dark"
+
+    # SVG-level colour map.  PlantUML monochrome output uses:
+    #   - #FFFFFF / #FAFAFA / #F2F2F2 for fills (canvas, boxes, notes)
+    #   - #000000 for text and some strokes
+    #   - #181818 for most borders / lines
+    # Background colour may also appear as background:#FFFFFF in the root <svg> style.
+    # Build the sed script as a file to avoid command-line length limits.
+    local sed_script
+    sed_script=$(mktemp /tmp/dark-sed-XXXXXX.sed)
+    cat > "$sed_script" <<'SEDSCRIPT'
+s/background:#FFFFFF/background:#1A1A1A/gI
+s/background: #FFFFFF/background: #1A1A1A/gI
+s/fill="#F2F2F2"/fill="#2D2D2D"/gI
+s/fill="#FAFAFA"/fill="#2D2D2D"/gI
+s/fill="#F1F1F1"/fill="#2D2D2D"/gI
+s/fill="#FFFFFF"/fill="#2D2D2D"/gI
+s/fill="#222222"/fill="#C0C0C0"/gI
+s/stroke="#222222"/stroke="#C0C0C0"/gI
+s/stroke="#181818"/stroke="#C0C0C0"/gI
+s/stroke="#000000"/stroke="#C0C0C0"/gI
+s/stroke="#FFFFFF"/stroke="#C0C0C0"/gI
+s/fill="#000000"/fill="#E8E8E8"/gI
+s/fill="#181818"/fill="#C0C0C0"/gI
+s/stroke:#222222/stroke:#C0C0C0/gI
+s/stroke:#181818/stroke:#C0C0C0/gI
+s/stroke:#000000/stroke:#C0C0C0/gI
+s/stroke:#FFFFFF/stroke:#C0C0C0/gI
+s/stroke: #222222/stroke: #C0C0C0/gI
+s/stroke: #181818/stroke: #C0C0C0/gI
+s/stroke: #000000/stroke: #C0C0C0/gI
+s/stroke: #FFFFFF/stroke: #C0C0C0/gI
+s/fill:#222222/fill:#C0C0C0/gI
+s/fill:#181818/fill:#C0C0C0/gI
+s/fill:#000000/fill:#E8E8E8/gI
+s/fill: #222222/fill: #C0C0C0/gI
+s/fill: #181818/fill: #C0C0C0/gI
+s/fill: #000000/fill: #E8E8E8/gI
+s/fill:#FAFAFA/fill:#2D2D2D/gI
+s/fill:#F1F1F1/fill:#2D2D2D/gI
+s/fill:#F2F2F2/fill:#2D2D2D/gI
+s/fill: #FAFAFA/fill: #2D2D2D/gI
+s/fill: #F1F1F1/fill: #2D2D2D/gI
+s/fill: #F2F2F2/fill: #2D2D2D/gI
+SEDSCRIPT
+    sed -i -f "$sed_script" "$dark"
+    rm -f "$sed_script"
+}
+
+# postprocess_dark_png — Recolor a light PNG into a dark-themed PNG
+# Arguments: $1=light_png_path, $2=dark_png_path
+# Requires ImageMagick (convert/identify). This is a best-effort recolour;
+# anti-aliased edges may retain a slight halo. SVG dark mode is preferred.
+postprocess_dark_png() {
+    local light="$1"
+    local dark="$2"
+
+    if ! command -v convert &>/dev/null; then
+        return 1
+    fi
+
+    # Map colours in an order that preserves contrast.  Dark greys replace
+    # light fills first; text/stroke colours are replaced last so they remain
+    # visible on the new fills.
+    convert "$light" \
+        -fuzz 25% -fill '#1A1A1A' -opaque '#FFFFFF' \
+        -fuzz 25% -fill '#2D2D2D' -opaque '#FAFAFA' \
+        -fuzz 25% -fill '#2D2D2D' -opaque '#F1F1F1' \
+        -fuzz 25% -fill '#2D2D2D' -opaque '#F2F2F2' \
+        -fuzz 25% -fill '#C0C0C0' -opaque '#222222' \
+        -fuzz 25% -fill '#C0C0C0' -opaque '#181818' \
+        -fuzz 25% -fill '#E8E8E8' -opaque '#000000' \
+        "$dark"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -492,10 +636,11 @@ check_a4_fit() {
 # fix_puml_a4_fit — Insert a PlantUML scale directive into a .puml copy
 # Arguments: $1=puml_file
 # Uses global A4_SCALE_FACTOR set by check_a4_fit
-# Returns: path to modified .puml on stdout, empty string on failure
+# Returns: path to modified .puml on stdout, empty string on failure.
+# stdout must stay clean because callers capture it via $(...); logs go to stderr.
 fix_puml_a4_fit() {
     local puml="$1"
-    local tmp="${puml}.a4fixed"
+    local tmp="${puml%.puml}.a4fixed.puml"
 
     if [[ -z "$A4_SCALE_FACTOR" ]] || [[ "$A4_SCALE_FACTOR" == "1.0" ]]; then
         echo ""
@@ -509,23 +654,24 @@ fix_puml_a4_fit() {
     cp "$puml" "$tmp"
     sed -i '1s/^@startuml/@startuml\n!pragma a4FitFixed/' "$tmp"
 
-    # PlantUML accepts only one scale directive per diagram; strip the
-    # aspect-ratio auto-fix's `scale 0.8` so our A4 scale takes effect.
-    sed -i '/^scale 0\.8$/d' "$tmp"
+    # PlantUML uses only one scale directive per diagram; remove any existing
+    # scale line (including the aspect-ratio auto-fix's scale 0.9) so the A4
+    # scale is the one that takes effect.
+    sed -i '/^[[:space:]]*scale[[:space:]]/d' "$tmp"
 
     sed -i "/!pragma a4FitFixed/a scale ${A4_SCALE_FACTOR}" "$tmp"
-    echo "  → Applied: scale ${A4_SCALE_FACTOR} (A4 fit)"
+    echo "  → Applied: scale ${A4_SCALE_FACTOR} (A4 fit)" >&2
 
     # Warn about font legibility on A4 if we shrunk a lot
     local effective_pt
     effective_pt=$(awk "BEGIN {printf \"%.1f\", $A4_SCALE_FACTOR * $DEFAULT_FONT_PX * 0.75}" 2>/dev/null)
     if [[ -n "$effective_pt" ]]; then
         if awk "BEGIN {exit !($effective_pt < $MIN_FONT_PT)}" 2>/dev/null; then
-            echo "  ⚠ After scaling to ${A4_SCALE_FACTOR}, estimated font ≈ ${effective_pt}pt on A4"
-            echo "    That is below --min-font-pt ${MIN_FONT_PT} and may be hard to read in print."
-            echo "    Consider splitting into multiple diagrams or abbreviating labels."
+            echo "  ⚠ After scaling to ${A4_SCALE_FACTOR}, estimated font ≈ ${effective_pt}pt on A4" >&2
+            echo "    That is below --min-font-pt ${MIN_FONT_PT} and may be hard to read in print." >&2
+            echo "    Consider splitting into multiple diagrams or abbreviating labels." >&2
         else
-            echo "     Estimated font ≈ ${effective_pt}pt on A4 (≥ min ${MIN_FONT_PT}pt) ✓"
+            echo "     Estimated font ≈ ${effective_pt}pt on A4 (≥ min ${MIN_FONT_PT}pt) ✓" >&2
         fi
     fi
 
@@ -638,7 +784,9 @@ convert_via_docker() {
                 --entrypoint sh plantuml/plantuml:latest \
                 -c "fc-cache -f 2>/dev/null; plantuml -t${ext} /data/$(basename "$src")" 2>/dev/null; then
                 local generated
-                generated=$(ls "$docker_tmp"/*."$ext" 2>/dev/null || ls "$docker_tmp"/*."$FORMAT" 2>/dev/null || echo "")
+                local src_basename
+                src_basename=$(basename "$src" .puml)
+                generated=$(ls "$docker_tmp"/"${src_basename}"."$ext" 2>/dev/null || ls "$docker_tmp"/"${src_basename}"."$FORMAT" 2>/dev/null || echo "")
                 [[ -n "$generated" ]] && mv "$generated" "$OUTPUT_FILE"
                 rm -rf "$docker_tmp"
                 echo "  ✓ Success (Docker + CJK)"
@@ -652,10 +800,12 @@ convert_via_docker() {
 
     # Standard Docker rendering
     if MSYS_NO_PATHCONV=1 docker run --rm -v "${docker_mount}:/data" plantuml/plantuml:latest \
-        "-t${ext}" "/data/$(basename "$INPUT")" 2>/dev/null; then
+        "-t${ext}" "/data/$(basename "$src")" 2>/dev/null; then
 
         local generated
-        generated=$(ls "$docker_tmp"/*."$ext" 2>/dev/null || ls "$docker_tmp"/*."$FORMAT" 2>/dev/null || echo "")
+        local src_basename
+        src_basename=$(basename "$src" .puml)
+        generated=$(ls "$docker_tmp"/"${src_basename}"."$ext" 2>/dev/null || ls "$docker_tmp"/"${src_basename}"."$FORMAT" 2>/dev/null || echo "")
         if [[ -n "$generated" ]]; then
             mv "$generated" "$OUTPUT_FILE"
             rm -rf "$docker_tmp"
@@ -701,17 +851,28 @@ convert_via_local() {
     local ext="$FORMAT"
     [[ "$FORMAT" == "txt" ]] && ext="utxt"
 
-    if java -jar "$jar" "-t${ext}" -o "$OUTPUT_DIR" "$src" 2>/dev/null; then
+    # PlantUML places output relative to the source file's directory, so render
+    # from a temporary directory to know exactly where the generated file lands.
+    local local_tmp="${PORTABLE_TMP}/plantuml_local_$$"
+    mkdir -p "$local_tmp"
+    cp "$src" "$local_tmp/"
+
+    local src_basename
+    src_basename=$(basename "$src" .puml)
+    src_basename="${src_basename%.plantuml}"
+    src_basename="${src_basename%.txt}"
+
+    if java -jar "$jar" "-t${ext}" "$local_tmp/${src_basename}.puml" 2>/dev/null; then
         local generated
-        generated=$(ls "$OUTPUT_DIR"/"${INPUT_BASENAME}"*."$FORMAT" 2>/dev/null | head -1)
-        if [[ -n "$generated" ]] && [[ "$generated" != "$OUTPUT_FILE" ]]; then
+        generated=$(ls "$local_tmp"/${src_basename}."$ext" 2>/dev/null || ls "$local_tmp"/${src_basename}."$FORMAT" 2>/dev/null || echo "")
+        if [[ -n "$generated" ]]; then
             mv "$generated" "$OUTPUT_FILE"
-        fi
-        if [[ -f "$OUTPUT_FILE" ]]; then
+            rm -rf "$local_tmp"
             echo "  ✓ Success (local JAR)"
             return 0
         fi
     fi
+    rm -rf "$local_tmp"
     echo "  ✗ Local JAR failed"
     return 1
 }
@@ -743,13 +904,17 @@ fi
 
 # ── Render ───────────────────────────────────────────────────────────────────
 RENDER_OK=false
-MAX_FIX_ATTEMPTS=2
+MAX_FIX_ATTEMPTS=3
 FIX_ATTEMPT=0
 ASPECT_DONE=false
 A4_TRIED=false
 
 while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
     convert_via_docker "$WORK_COPY" || convert_via_local "$WORK_COPY" || convert_via_server "$WORK_COPY" || {
+        if $RENDER_OK && [[ -f "$OUTPUT_FILE" ]]; then
+            echo "  ⚠ Re-render failed; keeping the last successful output"
+            break
+        fi
         echo ""
         echo "❌ All conversion methods failed."
         echo "   Install options (local, recommended for privacy):"
@@ -769,6 +934,7 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
 
     if $AUTO_FIX && ! $ASPECT_DONE; then
         aspect_rc=2
+        CHECKED_ASPECT_PROBLEM="ok"
         check_aspect_ratio "$OUTPUT_FILE" "$FORMAT" && aspect_rc=0 || aspect_rc=$?
 
         if [[ "$aspect_rc" -eq 2 ]]; then
@@ -778,27 +944,21 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
             FIX_ATTEMPT=$((FIX_ATTEMPT + 1))
             if [[ "$FIX_ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]]; then
                 echo "  ⚠ Maximum fix attempts ($MAX_FIX_ATTEMPTS) reached. Manual adjustment may be needed."
-                break
+                ASPECT_DONE=true
+            else
+                aspect_fixed=$(fix_puml_aspect_ratio "$WORK_COPY" "$CHECKED_ASPECT_PROBLEM") || {
+                    echo "  ✗ Auto-fix step failed; keeping current output." >&2
+                    ASPECT_DONE=true
+                    break
+                }
+
+                if [[ "$WORK_COPY" != "$INPUT" ]]; then
+                    rm -f "$WORK_COPY"
+                fi
+                WORK_COPY="$aspect_fixed"
+                echo "  → Re-rendering with corrected layout..."
+                continue
             fi
-
-            aspect_w="$SVG_WIDTH"; aspect_h="$SVG_HEIGHT"
-            if [[ "$FORMAT" == "png" ]]; then aspect_w="$PNG_WIDTH"; aspect_h="$PNG_HEIGHT"; fi
-
-            aspect_problem="too_wide"
-            [[ "$aspect_h" -gt "$aspect_w" ]] && aspect_problem="too_tall"
-
-            aspect_fixed=$(fix_puml_aspect_ratio "$WORK_COPY" "$aspect_problem") || {
-                echo "  ✗ Auto-fix failed; using original diagram."
-                break
-            }
-
-            if [[ "$WORK_COPY" != "$INPUT" ]]; then
-                rm -f "$WORK_COPY"
-            fi
-            WORK_COPY="$aspect_fixed"
-            ASPECT_DONE=true
-            echo "  → Re-rendering with corrected layout..."
-            continue
         fi
         ASPECT_DONE=true
     fi
@@ -841,6 +1001,29 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
     break
 done
 
+# ── Dark-mode variant (opt-in) ───────────────────────────────────────────────
+DARK_OUTPUT_FILE=""
+if $DARK_MODE && $RENDER_OK; then
+    DARK_OUTPUT_FILE="${OUTPUT_DIR}/${INPUT_BASENAME}.dark.${FORMAT}"
+    echo ""
+    echo "🌙 Dark-mode variant requested: $DARK_OUTPUT_FILE"
+
+    if [[ "$FORMAT" == "svg" ]]; then
+        postprocess_dark_svg "$OUTPUT_FILE" "$DARK_OUTPUT_FILE"
+        echo "  ✓ Dark-mode SVG generated"
+    elif [[ "$FORMAT" == "png" ]]; then
+        if postprocess_dark_png "$OUTPUT_FILE" "$DARK_OUTPUT_FILE"; then
+            echo "  ✓ Dark-mode PNG generated"
+        else
+            echo "  ⚠ Dark-mode PNG requires ImageMagick (convert); dark variant skipped"
+            DARK_OUTPUT_FILE=""
+        fi
+    else
+        echo "  ⚠ Dark-mode is only supported for svg and png output; skipping"
+        DARK_OUTPUT_FILE=""
+    fi
+fi
+
 # ── Cleanup temp files ───────────────────────────────────────────────────────
 if [[ "$WORK_COPY" != "$INPUT" ]]; then
     rm -f "$WORK_COPY"
@@ -852,4 +1035,8 @@ if $RENDER_OK; then
     echo ""
     echo "✅ Output: $OUTPUT_FILE"
     echo "$OUTPUT_FILE"
+    if [[ -n "$DARK_OUTPUT_FILE" ]] && [[ -f "$DARK_OUTPUT_FILE" ]]; then
+        echo "🌙 Dark: $DARK_OUTPUT_FILE"
+        echo "$DARK_OUTPUT_FILE"
+    fi
 fi
