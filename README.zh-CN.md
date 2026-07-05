@@ -7,7 +7,7 @@
 [![skills.sh](https://skills.sh/b/samonysh/plantuml-skill)](https://skills.sh/samonysh/plantuml-skill)
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.5.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.6.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## 特性
@@ -137,17 +137,24 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 
 所有生成的图表都遵循 **uml-diagrams.org 参考风格** —— 严格遵循 OMG UML 2.x、用 Visio UML 2.x stencils 渲染的黑白外观（与 https://www.uml-diagrams.org 上的图视觉一致）：
 
-```
-' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
-skinparam style strictuml
-skinparam monochrome true
-skinparam backgroundColor #FFFFFF
-skinparam defaultFontName Helvetica
-skinparam shadowing false
-skinparam classAttributeIconSize 0
-skinparam roundCorner 0
-skinparam SequenceLifeLineBorderColor #000000
-skinparam SequenceActivationBackgroundColor #FFFFFF
+自 PlantUML 1.2019.9 起，官方推荐使用 CSS 风格的 `<style>` 块替代 `skinparam`（参见 [plantuml.com/style-evolution](https://plantuml.com/style-evolution)）。本 skill **默认使用 CSS `<style>` 前言块**，仅保留两个无 CSS 等价物的 `skinparam` 设置。
+
+```css
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+/* ... 各图表类型作用域样式 ... */
+</style>
+skinparam style strictuml           ' 无 CSS 等价物
+skinparam classAttributeIconSize 0  ' 无 CSS 等价物
 ```
 
 关键规则（对应到 uml-diagrams.org 的具体图示）：
@@ -161,43 +168,45 @@ skinparam SequenceActivationBackgroundColor #FFFFFF
 - **统一细发丝线条**（约 0.75pt 的边框与箭头）
 - **标准 UML 几何形状** —— 棒人 actor、虚线依赖、虚线生命线
 
-### 备选方案 —— CSS `<style>` preamble
+### 备选方案 —— `skinparam` preamble（向后兼容）
 
-自 PlantUML 1.2019.9 起，官方推荐使用 CSS 风格的 `<style>` 块替代 `skinparam`（参见 [plantuml.com/style-evolution](https://plantuml.com/style-evolution)）。本 skill 同时提供一套**视觉完全等价**、基于 `<style>` 的 preamble，适合运行在较新版本 PlantUML 上的用户。详见 [`SKILL.md`](skills/plantuml/SKILL.md) 中的 "Alternative — CSS-style Preamble" 章节，以及参考示例 [`examples/07_sequence_oauth2_css_style.puml`](examples/07_sequence_oauth2_css_style.puml)。
+如需兼容 PlantUML < 1.2019.9 的旧版本，可使用经典 `skinparam` 前言块。两套 preamble 视觉完全一致。详见 [`SKILL.md`](skills/plantuml/SKILL.md) 中的 "Backup — `skinparam` Preamble" 章节。
 
 ## 示例
 
+所有示例均使用 **CSS `<style>` 前言块**（推荐）。`skinparam` 版本同样保留，供向后兼容使用。
+
 ### 时序图 —— OAuth2 授权码模式
 
-![OAuth2 Sequence](examples/01_sequence_oauth2.svg)
+![OAuth2 Sequence](examples/01_sequence_oauth2_css.svg)
 
 ### 类图 —— 订单领域模型
 
-![Order Domain](examples/02_class_order_domain.svg)
+![Order Domain](examples/02_class_order_domain_css.svg)
 
 ### 活动图 —— 退款审批流程
 
-![Refund Workflow](examples/03_activity_refund.svg)
+![Refund Workflow](examples/03_activity_refund_css.svg)
 
 ### 用例图 —— CMS 内容管理系统
 
-![CMS Use Case](examples/04_usecase_cms.svg)
+![CMS Use Case](examples/04_usecase_cms_css.svg)
 
 ### 组件图 —— 电商微服务架构
 
-![Microservices](examples/05_component_microservices.svg)
+![Microservices](examples/05_component_microservices_css.svg)
 
 ### 状态图 —— 工单生命周期
 
-![Ticket States](examples/06_state_ticket.svg)
+![Ticket States](examples/06_state_ticket_css.svg)
 
-### 时序图 —— OAuth2 流程（CSS preamble 备选）
+### 时序图 —— OAuth2 流程（skinparam 前言，向后兼容）
 
-与示例 #1 业务相同，但改用 [plantuml.com/style-evolution](https://plantuml.com/style-evolution) 推荐的现代 **CSS `<style>` 块** 替代 `skinparam`。两套 preamble 视觉完全一致 —— 在 PlantUML ≥ 1.2019.9 上，建议优先采用 CSS 变体（`skinparam` 正在被官方逐步淘汰）。
+与示例 #1 业务相同，但使用经典 `skinparam` 前言块。两套 preamble 视觉完全一致 —— 在 PlantUML ≥ 1.2019.9 上，建议优先采用 CSS 变体。
 
-![OAuth2 Sequence — CSS variant](examples/07_sequence_oauth2_css_style.svg)
+![OAuth2 Sequence — skinparam variant](examples/01_sequence_oauth2.svg)
 
-所有示例源文件都在 [`examples/`](examples/) 目录下，全部采用 **uml-diagrams.org 参考风格** 的 preamble（其中 #07 使用 CSS 备选变体）。可以单独重新渲染某一个：
+所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。可以单独重新渲染某一个：
 
 ```bash
 bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
@@ -221,22 +230,29 @@ Get-ChildItem examples\*.puml | ForEach-Object {
 
 ```
 plantuml-skill/
+├── skills/
+│   └── plantuml/                       # 规范 skill（skills.sh 发现路径）
+│       ├── SKILL.md                    # Skill 定义与详细说明
+│       └── scripts/
+│           ├── generate-plantuml.sh    # 渲染脚本 — Linux/macOS/Git-Bash/WSL
+│           └── generate-plantuml.ps1   # 渲染脚本 — Windows PowerShell
 ├── .opencode/
 │   └── skills/
-│       └── plantuml/
-│           ├── SKILL.md                    # Skill 定义与详细说明
-│           ├── scripts/
-│           │   ├── generate-plantuml.sh    # 渲染脚本 — Linux/macOS/Git-Bash/WSL
-│           │   └── generate-plantuml.ps1   # 渲染脚本 — Windows PowerShell
-│           └── references/                 # （可扩展的参考资料目录）
+│       └── plantuml -> ../../skills/plantuml   # 向后兼容符号链接
 ├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg
+│   ├── 01_sequence_oauth2.puml / .svg          # skinparam 前言（向后兼容）
+│   ├── 01_sequence_oauth2_css.puml / .svg      # CSS 前言（推荐）
 │   ├── 02_class_order_domain.puml / .svg
+│   ├── 02_class_order_domain_css.puml / .svg
 │   ├── 03_activity_refund.puml / .svg
+│   ├── 03_activity_refund_css.puml / .svg
 │   ├── 04_usecase_cms.puml / .svg
+│   ├── 04_usecase_cms_css.puml / .svg
 │   ├── 05_component_microservices.puml / .svg
+│   ├── 05_component_microservices_css.puml / .svg
 │   ├── 06_state_ticket.puml / .svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg   # CSS preamble 备选示例
+│   ├── 06_state_ticket_css.puml / .svg
+│   └── 07_sequence_oauth2_css_style.puml / .svg   # 旧版 CSS 示例
 ├── .gitignore
 ├── README.md           # 英文 README
 └── README.zh-CN.md     # 中文 README（本文件）
@@ -345,7 +361,7 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 运行时隐私警告会显示解析后的目标主机，便于上传前确认流向。自定义主机需要暴露
 标准的 Kroki 端点形式：`<base>/plantuml/<format>`。
 
-### 为什么是 Kroki（v1.5.0）
+### 为什么是 Kroki（v1.6.0）
 
 早期版本的脚本使用 `https://www.plantuml.com/plantuml`。该端点目前位于
 Cloudflare + Ezoic 同意墙之后（POST 会被 302 重定向到一个纯 JavaScript 渲染的

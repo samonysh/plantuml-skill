@@ -1,0 +1,82 @@
+@startuml
+' uml-diagrams.org reference style — CSS variant (plantuml.com <style> syntax)
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+
+title {
+  FontSize 14
+  FontStyle bold
+  FontColor #000000
+  BackGroundColor transparent
+  LineColor transparent
+  LineThickness 0
+}
+
+note {
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  FontColor #000000
+}
+
+useCaseDiagram {
+  actor     { BackGroundColor #FFFFFF; LineColor #000000 }
+  usecase   { BackGroundColor #FFFFFF; LineColor #000000 }
+  rectangle { BackGroundColor #FFFFFF; LineColor #000000 }
+}
+</style>
+
+' These two settings have no CSS equivalent yet — keep as skinparam:
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+
+title Content Management System
+
+left to right direction
+
+actor Author
+actor Editor
+actor Admin
+actor "Site Visitor" as Visitor
+
+rectangle "CMS" {
+    usecase "Create Article" as UC1
+    usecase "Edit Article" as UC2
+    usecase "Upload Media" as UC3
+    usecase "Review Content" as UC4
+    usecase "Publish Article" as UC5
+    usecase "Manage Categories" as UC6
+    usecase "Manage Users" as UC7
+    usecase "View Analytics" as UC8
+    usecase "Browse Articles" as UC9
+    usecase "Search Content" as UC10
+}
+
+Author --> UC1
+Author --> UC2
+Author --> UC3
+
+Editor --> UC4
+Editor --> UC5
+Editor --> UC6
+Editor --> UC8
+
+Admin --> UC7
+Admin --> UC8
+
+Visitor --> UC9
+Visitor --> UC10
+
+UC4 ..> UC2 : <<include>>
+UC5 ..> UC4 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC9 ..> UC10 : <<extend>>
+@enduml

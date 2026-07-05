@@ -1,0 +1,96 @@
+@startuml
+' uml-diagrams.org reference style — CSS variant (plantuml.com <style> syntax)
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+
+title {
+  FontSize 14
+  FontStyle bold
+  FontColor #000000
+  BackGroundColor transparent
+  LineColor transparent
+  LineThickness 0
+}
+
+note {
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  FontColor #000000
+}
+
+activityDiagram {
+  activity { BackGroundColor #FFFFFF; LineColor #000000; FontColor #000000; RoundCorner 10 }
+  arrow    { LineColor #000000; LineThickness 0.75 }
+  diamond  { BackGroundColor #FFFFFF; LineColor #000000 }
+}
+</style>
+
+' These two settings have no CSS equivalent yet — keep as skinparam:
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+
+title Refund Approval Workflow
+
+|Customer|
+start
+:Submit refund request;
+:Upload receipt;
+
+|System|
+:Validate order eligibility;
+if (Within 30 days?) then (no)
+    :Reject request;
+    |Customer|
+    :Receive rejection notice;
+    stop
+else (yes)
+    if (Amount < $100?) then (yes)
+        :Auto-approve;
+    else (no)
+        |Manager|
+        :Review refund case;
+        if (Approved?) then (yes)
+            :Authorize refund;
+        else (no)
+            :Request more info;
+            |Customer|
+            :Provide additional documents;
+            |Manager|
+            :Re-review case;
+            if (Approved?) then (yes)
+                :Authorize refund;
+            else (no)
+                :Final reject;
+                |Customer|
+                :Receive rejection;
+                stop
+            endif
+        endif
+    endif
+endif
+
+|Payment Gateway|
+:Process refund;
+if (Refund successful?) then (yes)
+    :Credit original payment method;
+    |Customer|
+    :Receive refund confirmation;
+else (no)
+    :Log failure;
+    |System|
+    :Notify support team;
+    |Customer|
+    :Notify: manual refund pending;
+endif
+
+stop
+@enduml

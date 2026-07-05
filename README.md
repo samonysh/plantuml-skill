@@ -7,7 +7,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 [![skills.sh](https://skills.sh/b/samonysh/plantuml-skill)](https://skills.sh/samonysh/plantuml-skill)
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.5.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.6.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## Features
@@ -172,47 +172,45 @@ Key rules (mapped to uml-diagrams.org figures):
 
 PlantUML 1.2019.9+ recommends the CSS-like `<style>` block instead of `skinparam`
 ([plantuml.com/style-evolution](https://plantuml.com/style-evolution)). The skill ships
-a **second, visually equivalent preamble** based on `<style>` for users on modern
-PlantUML versions. See the `Alternative — CSS-style Preamble` section in
-[`SKILL.md`](skills/plantuml/SKILL.md) and the reference example
-[`examples/07_sequence_oauth2_css_style.puml`](examples/07_sequence_oauth2_css_style.puml).
+CSS-style preambles for all diagram types. See the `OMG-UML / uml-diagrams.org Style Configuration` section in
+[`SKILL.md`](skills/plantuml/SKILL.md) for the full CSS preamble.
 
 ## Examples
 
+All examples use the **CSS `<style>` preamble** (recommended). Skinparam versions are also available for backward compatibility.
+
 ### Sequence Diagram — OAuth2 Authorization Code Flow
 
-![OAuth2 Sequence](examples/01_sequence_oauth2.svg)
+![OAuth2 Sequence](examples/01_sequence_oauth2_css.svg)
 
 ### Class Diagram — Order Domain Model
 
-![Order Domain](examples/02_class_order_domain.svg)
+![Order Domain](examples/02_class_order_domain_css.svg)
 
 ### Activity Diagram — Refund Approval Workflow
 
-![Refund Workflow](examples/03_activity_refund.svg)
+![Refund Workflow](examples/03_activity_refund_css.svg)
 
 ### Use Case Diagram — CMS System
 
-![CMS Use Case](examples/04_usecase_cms.svg)
+![CMS Use Case](examples/04_usecase_cms_css.svg)
 
 ### Component Diagram — Microservice Architecture
 
-![Microservices](examples/05_component_microservices.svg)
+![Microservices](examples/05_component_microservices_css.svg)
 
 ### State Diagram — Support Ticket Lifecycle
 
-![Ticket States](examples/06_state_ticket.svg)
+![Ticket States](examples/06_state_ticket_css.svg)
 
-### Sequence Diagram — OAuth2 Flow (CSS-style preamble, alternative)
+### Sequence Diagram — OAuth2 Flow (skinparam preamble, backward-compatible)
 
-Same business scenario as example #1, but uses the modern **CSS `<style>` block**
-recommended by [plantuml.com/style-evolution](https://plantuml.com/style-evolution)
-instead of `skinparam`. Both preambles produce the same uml-diagrams.org look — use the
-CSS variant on PlantUML ≥ 1.2019.9 where `skinparam` is being phased out.
+Same business scenario as example #1, but uses the legacy `skinparam` preamble.
+Both preambles produce the same uml-diagrams.org look — use the CSS variant on PlantUML ≥ 1.2019.9.
 
-![OAuth2 Sequence — CSS variant](examples/07_sequence_oauth2_css_style.svg)
+![OAuth2 Sequence — skinparam variant](examples/01_sequence_oauth2.svg)
 
-All example source files (`.puml`) are in the [`examples/`](examples/) directory. They all use the **uml-diagrams.org reference style** preamble (example #07 uses the alternative CSS variant). You can regenerate any single one:
+All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. You can regenerate any single one:
 
 ```bash
 bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
@@ -246,13 +244,19 @@ plantuml-skill/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # backward-compat symlink for OpenCode project-skill auto-load
 ├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg
+│   ├── 01_sequence_oauth2.puml / .svg          # skinparam preamble (backward-compatible)
+│   ├── 01_sequence_oauth2_css.puml / .svg      # CSS preamble (recommended)
 │   ├── 02_class_order_domain.puml / .svg
+│   ├── 02_class_order_domain_css.puml / .svg
 │   ├── 03_activity_refund.puml / .svg
+│   ├── 03_activity_refund_css.puml / .svg
 │   ├── 04_usecase_cms.puml / .svg
+│   ├── 04_usecase_cms_css.puml / .svg
 │   ├── 05_component_microservices.puml / .svg
+│   ├── 05_component_microservices_css.puml / .svg
 │   ├── 06_state_ticket.puml / .svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg   # CSS-style preamble (alternative)
+│   ├── 06_state_ticket_css.puml / .svg
+│   └── 07_sequence_oauth2_css_style.puml / .svg   # legacy CSS example
 ├── .gitignore
 ├── README.md           # English README
 └── README.zh-CN.md     # 简体中文 README
@@ -368,7 +372,7 @@ The runtime privacy warning surfaces the resolved host so you can confirm the
 destination before any data leaves the machine. Custom hosts must expose the
 standard Kroki endpoint shape `<base>/plantuml/<format>`.
 
-### Why Kroki (v1.4.1)
+### Why Kroki (v1.6.0)
 
 Earlier versions of this script used `https://www.plantuml.com/plantuml`.
 That endpoint now sits behind a Cloudflare + Ezoic consent wall (HTTP 302 →

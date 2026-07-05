@@ -1,0 +1,134 @@
+@startuml
+' uml-diagrams.org reference style — CSS variant (plantuml.com <style> syntax)
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+
+title {
+  FontSize 14
+  FontStyle bold
+  FontColor #000000
+  BackGroundColor transparent
+  LineColor transparent
+  LineThickness 0
+}
+
+note {
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  FontColor #000000
+}
+
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #000000; FontColor #000000 }
+  arrow { LineColor #000000; LineThickness 0.75 }
+}
+</style>
+
+' These two settings have no CSS equivalent yet — keep as skinparam:
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+
+title Order Domain Model
+
+class Customer {
+    +id: UUID
+    +name: String
+    +email: String
+    +phone: String
+    +register()
+    +placeOrder()
+}
+
+class Order {
+    -id: UUID
+    -orderNumber: String
+    -totalAmount: Decimal
+    -status: OrderStatus
+    -createdAt: DateTime
+    +calculateTotal()
+    +cancel()
+    +confirm()
+}
+
+class OrderItem {
+    -id: UUID
+    -quantity: Integer
+    -unitPrice: Decimal
+    +subtotal(): Decimal
+}
+
+class Product {
+    -id: UUID
+    -sku: String
+    -name: String
+    -price: Decimal
+    -stock: Integer
+    +isAvailable(): Boolean
+    +reserveStock()
+}
+
+class Payment {
+    -id: UUID
+    -amount: Decimal
+    -method: PaymentMethod
+    -status: PaymentStatus
+    -paidAt: DateTime
+    +process()
+    +refund()
+}
+
+class Shipment {
+    -id: UUID
+    -trackingNumber: String
+    -carrier: String
+    -status: ShipmentStatus
+    -shippedAt: DateTime
+    +ship()
+    +track()
+}
+
+enum OrderStatus {
+    PENDING
+    CONFIRMED
+    PAID
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+enum PaymentMethod {
+    CREDIT_CARD
+    DEBIT_CARD
+    BANK_TRANSFER
+    WALLET
+}
+
+enum PaymentStatus {
+    PENDING
+    COMPLETED
+    FAILED
+    REFUNDED
+}
+
+enum ShipmentStatus {
+    PREPARING
+    IN_TRANSIT
+    DELIVERED
+    RETURNED
+}
+
+Customer "1" -- "*" Order : places
+Order "1" -- "*" OrderItem : contains
+OrderItem "*" -- "1" Product : references
+Order "1" -- "1" Payment : paid by
+Order "1" -- "0..1" Shipment : shipped via
+@enduml

@@ -1,7 +1,7 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.5.0
+version: 1.6.0
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
@@ -399,20 +399,38 @@ Key syntax: `->` sync message, `-->` async/return, `->>` async, `alt/else/end` b
 
 ```
 @startuml
-' OMG-UML Monochrome Style
+' OMG-UML Monochrome Style — CSS variant
+<style>
+root {
+  FontName Helvetica
+  FontSize 12
+  FontColor #000000
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  LineThickness 0.75
+  RoundCorner 0
+  Shadowing 0
+}
+title {
+  FontSize 14
+  FontStyle bold
+  FontColor #000000
+  BackGroundColor transparent
+  LineColor transparent
+  LineThickness 0
+}
+note {
+  BackGroundColor #FFFFFF
+  LineColor #000000
+  FontColor #000000
+}
+classDiagram {
+  class { BackGroundColor #FFFFFF; LineColor #000000; FontColor #000000 }
+  arrow { LineColor #000000; LineThickness 0.75 }
+}
+</style>
 skinparam style strictuml
-skinparam monochrome true
-skinparam backgroundColor white
-skinparam defaultFontName Helvetica
-skinparam shadowing false
 skinparam classAttributeIconSize 0
-skinparam sequenceMessageAlign center
-skinparam ActorBackgroundColor white
-skinparam ParticipantBackgroundColor white
-skinparam NoteBackgroundColor white
-skinparam SequenceGroupBackgroundColor white
-skinparam PackageBackgroundColor white
-skinparam ClassBackgroundColor white
 
 title Payment System
 
@@ -666,99 +684,17 @@ Colors: `<style> * { BackgroundColor lightblue } </style>`
 
 ## OMG-UML / uml-diagrams.org Style Configuration (MANDATORY)
 
-Every generated `.puml` file MUST include this preamble immediately after `@startuml`.
+Every generated `.puml` file MUST include this CSS-style preamble immediately after `@startuml`.
 It locks PlantUML's rendering to the **uml-diagrams.org reference style** (strict OMG UML 2.x,
-black-and-white Visio stencils):
-
-```
-' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
-skinparam monochrome true
-skinparam backgroundColor #FFFFFF
-skinparam defaultFontName Helvetica
-skinparam defaultFontSize 12
-skinparam shadowing false
-skinparam style strictuml
-skinparam classAttributeIconSize 0
-skinparam sequenceMessageAlign center
-skinparam roundCorner 0
-
-' Force every fill to white so monochrome never falls back to grey
-skinparam ActorBackgroundColor #FFFFFF
-skinparam ParticipantBackgroundColor #FFFFFF
-skinparam NoteBackgroundColor #FFFFFF
-skinparam SequenceGroupBackgroundColor #FFFFFF
-skinparam PackageBackgroundColor #FFFFFF
-skinparam ClassBackgroundColor #FFFFFF
-skinparam ObjectBackgroundColor #FFFFFF
-skinparam StateBackgroundColor #FFFFFF
-skinparam UsecaseBackgroundColor #FFFFFF
-skinparam ComponentBackgroundColor #FFFFFF
-skinparam ActivityBackgroundColor #FFFFFF
-skinparam NodeBackgroundColor #FFFFFF
-skinparam DatabaseBackgroundColor #FFFFFF
-skinparam StereotypeCBackgroundColor #FFFFFF
-skinparam StereotypeIBackgroundColor #FFFFFF
-skinparam StereotypeABackgroundColor #FFFFFF
-skinparam StereotypeEBackgroundColor #FFFFFF
-
-' Sequence diagrams — match the lifeline / activation look on uml-diagrams.org:
-'   * lifeline = dashed black vertical line
-'   * activation bar = thin WHITE rectangle with black border (NOT yellow)
-skinparam SequenceLifeLineBorderColor #000000
-skinparam SequenceLifeLineBackgroundColor #FFFFFF
-skinparam SequenceLifeLineBorderThickness 0.75
-skinparam SequenceActivationBackgroundColor #FFFFFF
-skinparam SequenceActivationBorderColor #000000
-skinparam SequenceArrowColor #000000
-skinparam SequenceArrowThickness 0.75
-skinparam SequenceBoxBackgroundColor #FFFFFF
-
-' Default arrow / border colour everywhere
-skinparam ArrowColor #000000
-skinparam ArrowThickness 0.75
-skinparam DefaultTextColor #000000
-```
-
-**What each directive does (mapped to uml-diagrams.org figures):**
-
-| Directive | Effect / uml-diagrams.org reference |
-|---|---|
-| `skinparam monochrome true` | Strips all PlantUML colour themes. Matches the Visio UML 2.x stencil look used across uml-diagrams.org. |
-| `skinparam backgroundColor #FFFFFF` | Pure white canvas — same as every figure on uml-diagrams.org. |
-| `skinparam *BackgroundColor #FFFFFF` (all element kinds) | Forces every classifier / actor / note / package / lifeline / state / use case / component / activity / node / database fill to pure white. Eliminates the grey fills `monochrome` would otherwise leave. |
-| `skinparam defaultFontName Helvetica` + size 12 | Sans-serif typography equivalent to Arial used by Visio stencils on uml-diagrams.org. |
-| `skinparam shadowing false` | Disables drop shadows — uml-diagrams.org figures never have shadows. |
-| `skinparam style strictuml` | **Critical**. Enforces text stereotypes (`«interface»`, `«abstract»`, `«enumeration»`) and removes the Ⓒ/Ⓘ/Ⓐ/Ⓔ circle adornments. Abstract classifier names render in italics, matching uml-diagrams.org §"Classifier". |
-| `skinparam classAttributeIconSize 0` | Removes the coloured visibility dots (●/◐/○). uml-diagrams.org uses `+`/`-`/`#`/`~` text markers only. |
-| `skinparam roundCorner 0` | Square corners on rectangles (matches Visio stencils). Activity diagrams override locally for round-cornered actions. |
-| `skinparam SequenceLifeLineBorderStyle` (implicit dashed via `strictuml`) + `SequenceLifeLineBorderColor #000000` | Lifelines render as **dashed black lines** — exactly the lifeline notation shown on uml-diagrams.org/sequence-diagrams.html. |
-| `skinparam SequenceActivationBackgroundColor #FFFFFF` + `SequenceActivationBorderColor #000000` | Activation bar (execution specification) is a **thin white rectangle with black border**, per the uml-diagrams.org definition: *"Execution is represented as a thin grey or white rectangle on the lifeline"*. |
-| `skinparam ArrowColor #000000` + `ArrowThickness 0.75` | All arrows are thin black — matches Visio stencil hair-line strokes. |
-
-**NEVER** apply colored themes (`!theme blueprint`, `!theme cerulean`, etc.), custom colors,
-gradients, shadows, or decorative styling — doing so breaks compliance with the
-uml-diagrams.org reference style. If a user explicitly and unambiguously requests colour,
-add it on top of this preamble rather than removing the preamble.
-
----
-
-## Alternative — CSS-style Preamble (modern, backup option)
+black-and-white Visio stencils).
 
 Since PlantUML `1.2019.9` the project officially recommends the **CSS-like `<style>` block**
 ([plantuml.com/style-evolution](https://plantuml.com/style-evolution)) as the preferred
 styling mechanism — *"`skinparam` is being phased out … users should migrate to `style`"*.
 
-This skill ships a **second, visually equivalent preamble** based on `<style>`. Both
-preambles produce the **same uml-diagrams.org reference look**; choose one according to the
-PlantUML version available at render time:
-
-| Use the `skinparam` preamble (default) when… | Use the `<style>` preamble (alternative) when… |
-|---|---|
-| You need maximum backward compatibility (PlantUML < 1.2019.9) | You are on a modern PlantUML version and want forward-looking syntax |
-| You want a single flat block of `skinparam` lines that's easy to grep | You want CSS-style nested scoping (`sequenceDiagram { lifeLine { … } }`) |
-| You need fine-grained per-element-type `*BackgroundColor` knobs | You want fewer lines and per-diagram-type cascading rules |
-
 **Do NOT mix both inside the same `.puml` file.** Pick one preamble per diagram.
+
+### Primary — CSS `<style>` Preamble (recommended)
 
 ```
 @startuml
@@ -831,25 +767,102 @@ skinparam style strictuml
 skinparam classAttributeIconSize 0
 ```
 
-**Notes on the CSS preamble:**
+**What each CSS block does (mapped to uml-diagrams.org figures):**
 
-- `LineStyle 5-5` is the CSS equivalent of `skinparam *LineStyle dashed` — gives the
-  uml-diagrams.org dashed lifeline.
-- `Shadowing 0` replaces `skinparam shadowing false`.
-- `RoundCorner 0` at `root` keeps every rectangle square; `activityDiagram.activity`
-  overrides it to `10` for the round-cornered action shape used on uml-diagrams.org.
-- `strictuml` (removes circle stereotype icons) and `classAttributeIconSize 0` (removes
-  attribute visibility dots) have **no CSS equivalent yet** as of PlantUML 1.2026.x —
-  keep them as `skinparam` lines beside the `<style>` block. This is the only place where
-  the two systems must coexist.
-- One example file ships with the CSS preamble: [`examples/07_sequence_oauth2_css_style.puml`](../../examples/07_sequence_oauth2_css_style.puml).
-  All other example files keep the `skinparam` preamble for backward compatibility.
+| CSS Block | Effect / uml-diagrams.org reference |
+|---|---|
+| `root` | Global defaults: Helvetica 12px black-on-white, 0.75pt lines, no shadows, square corners. Matches Visio UML 2.x stencil look. |
+| `root > Shadowing 0` | Disables drop shadows — uml-diagrams.org figures never have shadows. |
+| `root > RoundCorner 0` | Square corners on rectangles (matches Visio stencils). `activityDiagram.activity` overrides to `10` for round-cornered actions. |
+| `title` | Bold 14px black text, transparent background/border. |
+| `note` | White fill, black border, black text — matches uml-diagrams.org note style. |
+| `sequenceDiagram.lifeLine` | **Dashed black lines** (`LineStyle 5-5`) — exactly the lifeline notation on uml-diagrams.org/sequence-diagrams.html. |
+| `sequenceDiagram.arrow` | Thin black arrows (0.75pt) — matches Visio stencil hair-line strokes. |
+| `classDiagram.class` | White fill, black border — no grey fills. |
+| `activityDiagram.activity` | White fill with **round corners** (`RoundCorner 10`) — matches uml-diagrams.org activity shape. |
+| `activityDiagram.diamond` | White fill, black border for decision/merge diamonds. |
+| `useCaseDiagram` | White actors, use cases, and rectangles — no colored fills. |
+| `componentDiagram` | White components and packages — no colored fills. |
+| `stateDiagram.state` | White fill, black border — no grey fills. |
+
+**Two skinparam settings have NO CSS equivalent yet** (as of PlantUML 1.2026.x):
+- `skinparam style strictuml` — enforces text stereotypes (`«interface»`, `«abstract»`, `«enumeration»`) and removes circle adornments
+- `skinparam classAttributeIconSize 0` — removes coloured visibility dots (●/◐/○)
+
+These must remain as `skinparam` lines beside the `<style>` block. This is the only place
+where the two systems must coexist.
+
+### Backup — `skinparam` Preamble (backward-compatible)
+
+Use this preamble only when you need maximum backward compatibility with PlantUML < 1.2019.9.
+Both preambles produce the **same uml-diagrams.org reference look**.
+
+```
+' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
+skinparam monochrome true
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+skinparam sequenceMessageAlign center
+skinparam roundCorner 0
+
+' Force every fill to white so monochrome never falls back to grey
+skinparam ActorBackgroundColor #FFFFFF
+skinparam ParticipantBackgroundColor #FFFFFF
+skinparam NoteBackgroundColor #FFFFFF
+skinparam SequenceGroupBackgroundColor #FFFFFF
+skinparam PackageBackgroundColor #FFFFFF
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ObjectBackgroundColor #FFFFFF
+skinparam StateBackgroundColor #FFFFFF
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam ComponentBackgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam NodeBackgroundColor #FFFFFF
+skinparam DatabaseBackgroundColor #FFFFFF
+skinparam StereotypeCBackgroundColor #FFFFFF
+skinparam StereotypeIBackgroundColor #FFFFFF
+skinparam StereotypeABackgroundColor #FFFFFF
+skinparam StereotypeEBackgroundColor #FFFFFF
+
+' Sequence diagrams — match the lifeline / activation look on uml-diagrams.org:
+'   * lifeline = dashed black vertical line
+'   * activation bar = thin WHITE rectangle with black border (NOT yellow)
+skinparam SequenceLifeLineBorderColor #000000
+skinparam SequenceLifeLineBackgroundColor #FFFFFF
+skinparam SequenceLifeLineBorderThickness 0.75
+skinparam SequenceActivationBackgroundColor #FFFFFF
+skinparam SequenceActivationBorderColor #000000
+skinparam SequenceArrowColor #000000
+skinparam SequenceArrowThickness 0.75
+skinparam SequenceBoxBackgroundColor #FFFFFF
+
+' Default arrow / border colour everywhere
+skinparam ArrowColor #000000
+skinparam ArrowThickness 0.75
+skinparam DefaultTextColor #000000
+```
+
+**NEVER** apply colored themes (`!theme blueprint`, `!theme cerulean`, etc.), custom colors,
+gradients, shadows, or decorative styling — doing so breaks compliance with the
+uml-diagrams.org reference style. If a user explicitly and unambiguously requests colour,
+add it on top of this preamble rather than removing the preamble.
 
 ### CJK (Chinese/Japanese/Korean) Font Support
 
 When diagrams contain CJK characters, `Helvetica` cannot render them — characters will appear as empty boxes (□) or tofu (▯).
 
-**In `.puml` files**: Replace `skinparam defaultFontName Helvetica` with a CJK-compatible font:
+**In `.puml` files**: Replace `FontName Helvetica` in the CSS `<style>` block with a CJK-compatible font:
+```css
+root {
+  FontName "WenQuanYi Micro Hei"
+}
+```
+
+For the `skinparam` preamble (backward-compatible):
 ```
 skinparam defaultFontName "WenQuanYi Micro Hei"
 ```
