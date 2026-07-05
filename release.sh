@@ -116,11 +116,11 @@ update_version_refs() {
     fi
     
     # SKILL.md — version line
-    if grep -q '^version:' SKILL.md; then
+    if grep -q '^version:' "$SKILL_DIR/SKILL.md"; then
         if [[ "$dry_run" == "true" ]]; then
-            log "[dry-run] Would update SKILL.md version"
+            log "[dry-run] Would update $SKILL_DIR/SKILL.md version"
         else
-            sed -i "s/^version: .*/version: ${version}/" SKILL.md
+            sed -i "s/^version: .*/version: ${version}/" "$SKILL_DIR/SKILL.md"
         fi
     fi
     
@@ -277,7 +277,7 @@ main() {
     
     if [[ "$dry_run" == "false" ]]; then
         # Commit version changes
-        git add README.md README.zh-CN.md SKILL.md
+        git add README.md README.zh-CN.md "$SKILL_DIR/SKILL.md"
         git commit -m "chore: bump version to v${version}" || true
         git push origin main
     fi
