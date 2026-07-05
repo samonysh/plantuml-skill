@@ -1,5 +1,8 @@
 @startuml
 ' uml-diagrams.org reference style — CSS variant (plantuml.com <style> syntax)
+' Note: PlantUML may auto-scale fonts/strokes below the specified 12pt/0.75 values
+' when the diagram is dense (13 components, 4 packages). This is a known PlantUML
+' rendering behavior — the .puml declares 12pt/0.75 but the output may shrink.
 <style>
 root {
   FontName Helvetica

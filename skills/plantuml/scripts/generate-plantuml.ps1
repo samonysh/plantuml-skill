@@ -335,11 +335,25 @@ function Fix-PumlAspectRatio {
     $lines = $content -split "`r?`n"
     $pragmaLine = "!pragma aspectRatioFixed"
     $spacingBlock = @(
-        "skinparam Padding 8",
-        "skinparam BoxPadding 8",
-        "skinparam ParticipantPadding 8",
-        "skinparam MinClassWidth 100",
-        "skinparam WrapWidth 220",
+        "<style>",
+        "root {",
+        "  padding 8",
+        "  wrapWidth 220",
+        "}",
+        "activityDiagram {",
+        "  activity { padding 8 }",
+        "}",
+        "sequenceDiagram {",
+        "  participant { padding 8 }",
+        "  box { padding 8 }",
+        "}",
+        "classDiagram {",
+        "  class { padding 8; MinimumWidth 100 }",
+        "}",
+        "stateDiagram {",
+        "  state { padding 8 }",
+        "}",
+        "</style>",
         "skinparam NodeSep 35",
         "skinparam RankSep 35"
     )
@@ -472,50 +486,145 @@ function Fix-A4Fit {
 # Dark-mode post-processing
 # ═══════════════════════════════════════════════════════════════════════════════
 
+function New-BareStrokesSvg {
+    param([string]$SvgPath)
+    if (-not (Test-Path -LiteralPath $SvgPath)) { return }
+    try {
+        $content = Get-Content -LiteralPath $SvgPath -Encoding UTF8 -Raw
+        $bareCss = @'
+<style>@media (prefers-color-scheme: light) {
+/* Bare elements: PlantUML CSS mode may omit stroke on some shapes */
+ellipse:not([style*="stroke"]):not([stroke]),
+circle:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+rect[fill="#FFFFFF"]:not([style*="stroke"]):not([stroke]),
+rect[fill="#ffffff"]:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+path[fill="none"]:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+/* Swimlane headers rendered with white stroke (invisible on white canvas) */
+[style*="stroke:#FFFFFF"], [style*="stroke: #FFFFFF"],
+[style*="stroke:#ffffff"], [style*="stroke: #ffffff"] {
+ stroke: #000000 !important;
+}
+}</style>
+'@
+        $content = $content -replace '(<svg[^>]*>)', "`$1`n$bareCss"
+        Set-Content -LiteralPath $SvgPath -Value $content -Encoding UTF8 -NoNewline
+    } catch {}
+}
+
 function New-DarkSvg {
     param([string]$LightPath, [string]$DarkPath)
     if (-not (Test-Path -LiteralPath $LightPath)) { return $false }
     try {
         $content = Get-Content -LiteralPath $LightPath -Encoding UTF8 -Raw
-        # Canvas (root rect at 0,0)
-        $content = $content -replace '(<rect[^>]+fill=")#FFFFFF("[^>]+x="0"[^>]*>)', '${1}#1A1A1A${2}'
-        # Light element fills (SVG attributes)
-        $content = $content -replace '(<[^>]+fill=")#FFFFFF("[^>]*>)', '${1}#2D2D2D${2}'
-        $content = $content -replace '(<[^>]+fill=")#FAFAFA("[^>]*>)', '${1}#2D2D2D${2}'
-        $content = $content -replace '(<[^>]+fill=")#F1F1F1("[^>]*>)', '${1}#2D2D2D${2}'
-        $content = $content -replace '(<[^>]+fill=")#F2F2F2("[^>]*>)', '${1}#2D2D2D${2}'
-        $content = $content -replace '(<[^>]+fill=")#222222("[^>]*>)', '${1}#C0C0C0${2}'
-        # Text (SVG attributes)
-        $content = $content -replace '(<[^>]+fill=")#000000("[^>]*>)', '${1}#E8E8E8${2}'
-        $content = $content -replace '(<[^>]+fill=")#181818("[^>]*>)', '${1}#C0C0C0${2}'
-        # Strokes (SVG attributes)
-        $content = $content -replace '(<[^>]+stroke=")#222222("[^>]*>)', '${1}#C0C0C0${2}'
-        $content = $content -replace '(<[^>]+stroke=")#181818("[^>]*>)', '${1}#C0C0C0${2}'
-        $content = $content -replace '(<[^>]+stroke=")#000000("[^>]*>)', '${1}#C0C0C0${2}'
-        $content = $content -replace '(<[^>]+stroke=")#FFFFFF("[^>]*>)', '${1}#C0C0C0${2}'
-        # Inline CSS styles (style="...")
-        $content = $content -replace 'background:#FFFFFF', 'background:#1A1A1A'
-        $content = $content -replace 'background: #FFFFFF', 'background: #1A1A1A'
-        $content = $content -replace 'stroke:#222222', 'stroke:#C0C0C0'
-        $content = $content -replace 'stroke:#181818', 'stroke:#C0C0C0'
-        $content = $content -replace 'stroke:#000000', 'stroke:#C0C0C0'
-        $content = $content -replace 'stroke:#FFFFFF', 'stroke:#C0C0C0'
-        $content = $content -replace 'stroke: #222222', 'stroke: #C0C0C0'
-        $content = $content -replace 'stroke: #181818', 'stroke: #C0C0C0'
-        $content = $content -replace 'stroke: #000000', 'stroke: #C0C0C0'
-        $content = $content -replace 'stroke: #FFFFFF', 'stroke: #C0C0C0'
-        $content = $content -replace 'fill:#222222', 'fill:#C0C0C0'
-        $content = $content -replace 'fill:#181818', 'fill:#C0C0C0'
-        $content = $content -replace 'fill:#000000', 'fill:#E8E8E8'
-        $content = $content -replace 'fill: #222222', 'fill: #C0C0C0'
-        $content = $content -replace 'fill: #181818', 'fill: #C0C0C0'
-        $content = $content -replace 'fill: #000000', 'fill: #E8E8E8'
-        $content = $content -replace 'fill:#FAFAFA', 'fill:#2D2D2D'
-        $content = $content -replace 'fill:#F1F1F1', 'fill:#2D2D2D'
-        $content = $content -replace 'fill:#F2F2F2', 'fill:#2D2D2D'
-        $content = $content -replace 'fill: #FAFAFA', 'fill: #2D2D2D'
-        $content = $content -replace 'fill: #F1F1F1', 'fill: #2D2D2D'
-        $content = $content -replace 'fill: #F2F2F2', 'fill: #2D2D2D'
+
+        # CSS dark mode block — uses @media (prefers-color-scheme: dark)
+        # Color palette: GitHub dark theme inspired
+        $darkCss = @'
+<style>@media (prefers-color-scheme: dark) {
+ svg {
+ background: transparent !important;
+ }
+ [style*="background:#FFFFFF"], [style*="background: #FFFFFF"],
+ [style*="background:#ffffff"], [style*="background: #ffffff"] {
+ background: #1e1e2e !important;
+ }
+ [fill="#FFFFFF"], [fill="#ffffff"], [fill="#FFF"], [fill="#fff"],
+ [fill="#FEFEFE"], [fill="#fefefe"], [fill="#F1F1F1"], [fill="#f1f1f1"],
+ [fill="#EEEEEE"], [fill="#eeeeee"], [fill="#ECECEC"], [fill="#ececec"],
+ [fill="#FFFFCC"], [fill="#ffffcc"] {
+ fill: #1e1e2e !important;
+ }
+ /* Use case ellipses/circles: transparent fill so outline visible */
+ ellipse[fill="#FFFFFF"], ellipse[fill="#ffffff"],
+ ellipse[fill="#FFF"], ellipse[fill="#fff"],
+ ellipse[fill="#FEFEFE"], ellipse[fill="#fefefe"],
+ ellipse[style*="fill:#FFFFFF"], ellipse[style*="fill:#ffffff"],
+ circle[fill="#FFFFFF"], circle[fill="#ffffff"],
+ circle[fill="#FFF"], circle[fill="#fff"],
+ circle[fill="#FEFEFE"], circle[fill="#fefefe"],
+ circle[style*="fill:#FFFFFF"], circle[style*="fill:#ffffff"] {
+ fill: none !important;
+ stroke-width: 1.5 !important;
+ }
+ [stroke="#000000"], [stroke="#000"], [stroke="#181818"],
+ [stroke="#222222"], [stroke="#222"], [stroke="#333333"], [stroke="#333"] {
+ stroke: #c9d1d9 !important;
+ }
+ [style*="stroke:#181818"], [style*="stroke: #181818"],
+ [style*="stroke:#000000"], [style*="stroke: #000000"],
+ [style*="stroke:#222222"], [style*="stroke: #222222"],
+ [style*="stroke:#333333"], [style*="stroke: #333333"] {
+ stroke: #c9d1d9 !important;
+ }
+ [style*="stroke:#FFDD88"], [style*="stroke: #FFDD88"],
+ [style*="stroke:#ffdd88"], [style*="stroke: #ffdd88"] {
+ stroke: #6e7681 !important;
+ }
+ text, [fill="#000000"], [fill="#000"], [fill="#181818"], [fill="#222222"] {
+ fill: #c9d1d9 !important;
+ }
+ polygon[fill="#000000"], polygon[fill="#181818"], polygon[fill="#222222"],
+ polygon[fill="#333333"] {
+ fill: #c9d1d9 !important;
+ stroke: #c9d1d9 !important;
+ }
+ rect[style*="stroke:#000000"], rect[style*="stroke: #000000"],
+ rect[style*="stroke:#181818"], rect[style*="stroke: #181818"] {
+ stroke: #c9d1d9 !important;
+ }
+ ellipse[style*="stroke:#000000"], ellipse[style*="stroke: #000000"],
+ ellipse[style*="stroke:#181818"], ellipse[style*="stroke: #181818"] {
+ stroke: #c9d1d9 !important;
+ }
+ polygon[style*="stroke:#000000"], polygon[style*="stroke: #000000"],
+ polygon[style*="stroke:#181818"], polygon[style*="stroke: #181818"],
+ polygon[style*="stroke:#222222"], polygon[style*="stroke: #222222"] {
+ stroke: #c9d1d9 !important;
+ }
+ line[stroke="#181818"], line[stroke="#000000"],
+ line[style*="stroke:#181818"], line[style*="stroke: #181818"],
+ line[style*="stroke:#000000"], line[style*="stroke: #000000"] {
+ stroke: #6e7681 !important;
+ stroke-dasharray: 4 3 !important;
+ }
+ text[font-weight="700"], text[font-weight="bold"] {
+ fill: #f0f6fc !important;
+ }
+  /* Bare elements: PlantUML CSS mode may omit stroke on some shapes */
+  ellipse:not([style*="stroke"]):not([stroke]),
+  circle:not([style*="stroke"]):not([stroke]) {
+  stroke: #c9d1d9 !important;
+  stroke-width: 0.75 !important;
+  }
+  rect[fill="#FFFFFF"]:not([style*="stroke"]):not([stroke]),
+  rect[fill="#ffffff"]:not([style*="stroke"]):not([stroke]) {
+  stroke: #c9d1d9 !important;
+  stroke-width: 0.75 !important;
+  }
+  path[fill="none"]:not([style*="stroke"]):not([stroke]) {
+  stroke: #c9d1d9 !important;
+  stroke-width: 0.75 !important;
+  }
+  /* Swimlane headers rendered with white stroke (invisible on dark canvas) */
+  [style*="stroke:#FFFFFF"], [style*="stroke: #FFFFFF"],
+  [style*="stroke:#ffffff"], [style*="stroke: #ffffff"] {
+  stroke: #c9d1d9 !important;
+  }
+}</style>
+'@
+
+        # Inject CSS block after opening <svg> tag
+        $content = $content -replace '(<svg[^>]*>)', "`$1`n$darkCss"
+
         Set-Content -LiteralPath $DarkPath -Value $content -Encoding UTF8 -NoNewline
         return $true
     } catch {
@@ -894,6 +1003,11 @@ while ($fixAttempt -le $maxFixAttempts) {
 # Ensure we keep the last successful output if the final fix attempt did not re-render.
 if ($workCopy -ne $lastOkSrc -and (Test-Path -LiteralPath $lastOkSrc)) {
     $workCopy = $lastOkSrc
+}
+
+# Fix bare strokes in light SVG (CSS mode may omit strokes on some shapes)
+if ($renderOk -and $Format -eq "svg") {
+    New-BareStrokesSvg $outputFile
 }
 
 # ── Dark-mode companion ──────────────────────────────────────────────────────

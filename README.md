@@ -7,7 +7,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 [![skills.sh](https://skills.sh/b/samonysh/plantuml-skill)](https://skills.sh/samonysh/plantuml-skill)
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.6.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.6.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## Features
@@ -23,6 +23,7 @@ Natural language → PlantUML diagrams → SVG/PNG/PDF. An [OpenCode](https://gi
 - **CJK font support**: Chinese/Japanese/Korean character rendering via `--cjk` flag
 - **Aspect ratio auto-correction**: Detects and fixes excessively wide or tall diagrams
 - **A4 paper fit validation**: Ensures diagrams fit A4 dimensions (794×1123 px @ 96 DPI) with legible font sizes
+- **Dark mode**: Opt-in `--dark-mode` flag emits light + dark companion (`.dark.svg` / `.dark.png`) with CSS `@media (prefers-color-scheme: dark)` auto-switching
 
 ## Prerequisites
 
@@ -175,42 +176,84 @@ PlantUML 1.2019.9+ recommends the CSS-like `<style>` block instead of `skinparam
 CSS-style preambles for all diagram types. See the `OMG-UML / uml-diagrams.org Style Configuration` section in
 [`SKILL.md`](skills/plantuml/SKILL.md) for the full CSS preamble.
 
+### Dark Mode
+
+The `--dark-mode` flag generates a companion `.dark.svg` (or `.dark.png`) alongside the
+standard output. Instead of replacing colors with sed, it **injects a CSS
+`@media (prefers-color-scheme: dark)` block** right after the `<svg>` tag:
+
+- **Light mode** (default): white canvas `#FFFFFF`, black strokes `#000000`
+- **Dark mode**: dark canvas `#1e1e2e`, light strokes `#c9d1d9`, bold text `#f0f6fc`,
+  lifelines `#6e7681` with `stroke-dasharray: 4 3`
+
+The SVG remains a single file — no JavaScript, no external stylesheets. The dark palette
+activates automatically when the viewer's system or browser is in dark mode. On GitHub,
+use `<picture>` with `prefers-color-scheme` to auto-switch:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagram.dark.svg">
+  <img alt="My Diagram" src="diagram.svg">
+</picture>
+```
+
 ## Examples
 
-All examples use the **CSS `<style>` preamble** (recommended). Skinparam versions are also available for backward compatibility.
+All examples use the **CSS `<style>` preamble** (recommended). Each diagram is provided in both light and dark variants — GitHub will **auto-switch** based on your system's dark mode setting.
 
 ### Sequence Diagram — OAuth2 Authorization Code Flow
 
-![OAuth2 Sequence](examples/01_sequence_oauth2_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
+  <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
+</picture>
 
 ### Class Diagram — Order Domain Model
 
-![Order Domain](examples/02_class_order_domain_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
+  <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
+</picture>
 
 ### Activity Diagram — Refund Approval Workflow
 
-![Refund Workflow](examples/03_activity_refund_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
+  <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
+</picture>
 
 ### Use Case Diagram — CMS System
 
-![CMS Use Case](examples/04_usecase_cms_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
+  <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
+</picture>
 
 ### Component Diagram — Microservice Architecture
 
-![Microservices](examples/05_component_microservices_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
+  <img alt="Microservices" src="examples/05_component_microservices_css.svg">
+</picture>
 
 ### State Diagram — Support Ticket Lifecycle
 
-![Ticket States](examples/06_state_ticket_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
+  <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
+</picture>
 
 ### Sequence Diagram — OAuth2 Flow (skinparam preamble, backward-compatible)
 
 Same business scenario as example #1, but uses the legacy `skinparam` preamble.
 Both preambles produce the same uml-diagrams.org look — use the CSS variant on PlantUML ≥ 1.2019.9.
 
-![OAuth2 Sequence — skinparam variant](examples/01_sequence_oauth2.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
+  <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
+</picture>
 
-All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. You can regenerate any single one:
+All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. Each has a companion `.dark.svg` that activates automatically on dark backgrounds. You can regenerate any single one:
 
 ```bash
 bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
@@ -244,19 +287,14 @@ plantuml-skill/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # backward-compat symlink for OpenCode project-skill auto-load
 ├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg          # skinparam preamble (backward-compatible)
-│   ├── 01_sequence_oauth2_css.puml / .svg      # CSS preamble (recommended)
-│   ├── 02_class_order_domain.puml / .svg
-│   ├── 02_class_order_domain_css.puml / .svg
-│   ├── 03_activity_refund.puml / .svg
-│   ├── 03_activity_refund_css.puml / .svg
-│   ├── 04_usecase_cms.puml / .svg
-│   ├── 04_usecase_cms_css.puml / .svg
-│   ├── 05_component_microservices.puml / .svg
-│   ├── 05_component_microservices_css.puml / .svg
-│   ├── 06_state_ticket.puml / .svg
-│   ├── 06_state_ticket_css.puml / .svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg   # legacy CSS example
+│   ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam preamble (backward-compatible)
+│   ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS preamble (recommended)
+│   ├── 02_class_order_domain_css.puml / .svg / .dark.svg
+│   ├── 03_activity_refund_css.puml / .svg / .dark.svg
+│   ├── 04_usecase_cms_css.puml / .svg / .dark.svg
+│   ├── 05_component_microservices_css.puml / .svg / .dark.svg
+│   ├── 06_state_ticket_css.puml / .svg / .dark.svg
+│   └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # legacy alias of 01_css (same OAuth2 sequence diagram)
 ├── .gitignore
 ├── README.md           # English README
 └── README.zh-CN.md     # 简体中文 README
@@ -291,7 +329,7 @@ bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format
 bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --cjk
 
 # PNG, with custom aspect ratio threshold
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 3.0
+bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 1.4
 
 # ASCII art — Bash (txt format skips image rendering)
 bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format txt
@@ -320,11 +358,11 @@ Without `--cjk`, CJK characters are auto-detected and a warning is shown.
 ### Aspect Ratio Auto-Correction
 
 After rendering SVG or PNG output, the script checks the image dimensions. If the aspect ratio
-(width/height or height/width) exceeds `--max-aspect` (default 2.5:1), the script:
+(width/height or height/width) falls outside the `--min-aspect`–`--max-aspect` band (default 0.7–1.4), the script:
 
 1. Modifies the `.puml` with layout directives (`left to right direction`, `top to bottom direction`, `scale`, padding adjustments)
 2. Re-renders the diagram
-3. Checks again (up to 2 correction attempts)
+3. Checks again (up to 3 correction attempts)
 
 This prevents diagrams from being excessively stretched in either dimension.
 

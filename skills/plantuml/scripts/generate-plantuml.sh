@@ -384,13 +384,29 @@ check_aspect_ratio() {
     return 0
 }
 
-# Spacing skinparams injected during aspect-ratio auto-fix to keep text readable
-SPACING_GUARD_SKINPARAMS="skinparam Padding 8
-skinparam BoxPadding 8
-skinparam ParticipantPadding 8
-skinparam MinClassWidth 100
-skinparam WrapWidth 220
-skinparam NodeSep 35
+# Spacing guards injected during aspect-ratio auto-fix to keep text readable.
+# Uses CSS <style> block where possible; skinparam only for settings without CSS equivalent.
+SPACING_GUARD_CSS='<style>
+root {
+  padding 8
+  wrapWidth 220
+}
+activityDiagram {
+  activity { padding 8 }
+}
+sequenceDiagram {
+  participant { padding 8 }
+  box { padding 8 }
+}
+classDiagram {
+  class { padding 8; MinimumWidth 100 }
+}
+stateDiagram {
+  state { padding 8 }
+}
+</style>'
+# NodeSep / RankSep have no CSS equivalent — keep as skinparam
+SPACING_GUARD_SKINPARAMS="skinparam NodeSep 35
 skinparam RankSep 35"
 
 # fix_puml_aspect_ratio — Modify .puml file to improve aspect ratio
@@ -415,14 +431,12 @@ fix_puml_aspect_ratio() {
     # Inject pragma and spacing guards right after @startuml so they take effect early
     sed -i '1s/^@startuml/@startuml\n!pragma aspectRatioFixed/' "$tmp"
 
-    # Insert multi-line spacing guard block after the pragma (sed 'a' with
-    # embedded newlines is brittle, so write the block to a temp file and use
-    # the 'r'ead command).
     local spacing_tmp="${tmp}.spacing"
-    printf '%s\n' "$SPACING_GUARD_SKINPARAMS" > "$spacing_tmp"
+    printf '%s\n' "$SPACING_GUARD_CSS" > "$spacing_tmp"
+    printf '%s\n' "$SPACING_GUARD_SKINPARAMS" >> "$spacing_tmp"
     sed -i '/!pragma aspectRatioFixed/r '"$spacing_tmp" "$tmp"
     rm -f "$spacing_tmp"
-    echo "  → Applied: spacing guards (Padding, BoxPadding, ParticipantPadding, MinClassWidth, WrapWidth, NodeSep, RankSep)" >&2
+    echo "  → Applied: spacing guards (CSS padding/wrapWidth/MinimumWidth + skinparam NodeSep/RankSep)" >&2
 
     # Direction directives help class/usecase/component diagrams, but they can
     # break activity diagrams (after start/stop), are redundant for sequence
@@ -474,59 +488,156 @@ fix_puml_aspect_ratio() {
 # so the most reliable dark variant is produced by post-processing the already
 # rendered light image rather than re-rendering a recoloured .puml.
 
-# postprocess_dark_svg — Recolor a light SVG into a dark-themed SVG
+# postprocess_svg_bare_strokes — Add CSS stroke rules for elements PlantUML renders
+# without stroke attributes (common with CSS <style> blocks + skinparam style strictuml).
+# Arguments: $1=svg_path
+# This ensures use case ellipses, actor paths, and component rects are visible.
+postprocess_svg_bare_strokes() {
+    local svg="$1"
+    local css_file
+    css_file=$(mktemp /tmp/bare-strokes-XXXXXX.css)
+    cat > "$css_file" <<'CSSBLOCK'
+<style>@media (prefers-color-scheme: light) {
+/* Bare elements: PlantUML CSS mode may omit stroke on some shapes */
+ellipse:not([style*="stroke"]):not([stroke]),
+circle:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+rect[fill="#FFFFFF"]:not([style*="stroke"]):not([stroke]),
+rect[fill="#ffffff"]:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+path[fill="none"]:not([style*="stroke"]):not([stroke]) {
+ stroke: #000000 !important;
+ stroke-width: 0.75 !important;
+}
+/* Swimlane headers rendered with white stroke (invisible on white canvas) */
+[style*="stroke:#FFFFFF"], [style*="stroke: #FFFFFF"],
+[style*="stroke:#ffffff"], [style*="stroke: #ffffff"] {
+ stroke: #000000 !important;
+}
+}</style>
+CSSBLOCK
+    perl -pe "BEGIN { open(F,'<','$css_file'); \$css=join('',<F>); close(F); chomp \$css } if (/^<svg/ && !\$done) { s/(<svg[^>]*>)/\$1\n\$css/; \$done=1 }" "$svg" > "$svg.tmp" && mv "$svg.tmp" "$svg"
+    rm -f "$css_file"
+}
+
+# postprocess_dark_svg — Inject CSS-based dark mode into SVG
 # Arguments: $1=light_svg_path, $2=dark_svg_path
+# Uses @media (prefers-color-scheme: dark) CSS block for automatic theme switching.
+# This approach is CSS-first (aligning with the skill's styling preference) and
+# automatically adapts to the user's system theme without requiring separate files.
 postprocess_dark_svg() {
     local light="$1"
     local dark="$2"
 
-    cp "$light" "$dark"
+    # CSS dark mode block — injected after opening <svg> tag
+    # Color palette matches the reference examples (GitHub dark theme inspired):
+    #   - Canvas: #1e1e2e (subtle dark surface)
+    #   - Text/strokes: #c9d1d9 (light ink)
+    #   - Bold text: #f0f6fc (brighter for emphasis)
+    #   - Lifelines: #6e7681 (subtle dashed gray)
+    local dark_css_file
+    dark_css_file=$(mktemp /tmp/dark-css-XXXXXX.css)
+    cat > "$dark_css_file" <<'CSSBLOCK'
+<style>@media (prefers-color-scheme: dark) {
+ svg {
+ background: transparent !important;
+ }
+ [style*="background:#FFFFFF"], [style*="background: #FFFFFF"],
+ [style*="background:#ffffff"], [style*="background: #ffffff"] {
+ background: #1e1e2e !important;
+ }
+ [fill="#FFFFFF"], [fill="#ffffff"], [fill="#FFF"], [fill="#fff"],
+ [fill="#FEFEFE"], [fill="#fefefe"], [fill="#F1F1F1"], [fill="#f1f1f1"],
+ [fill="#EEEEEE"], [fill="#eeeeee"], [fill="#ECECEC"], [fill="#ececec"],
+ [fill="#FFFFCC"], [fill="#ffffcc"] {
+ fill: #1e1e2e !important;
+ }
+ /* Use case ellipses/circles: transparent fill so outline visible */
+ ellipse[fill="#FFFFFF"], ellipse[fill="#ffffff"],
+ ellipse[fill="#FFF"], ellipse[fill="#fff"],
+ ellipse[fill="#FEFEFE"], ellipse[fill="#fefefe"],
+ ellipse[style*="fill:#FFFFFF"], ellipse[style*="fill:#ffffff"],
+ circle[fill="#FFFFFF"], circle[fill="#ffffff"],
+ circle[fill="#FFF"], circle[fill="#fff"],
+ circle[fill="#FEFEFE"], circle[fill="#fefefe"],
+ circle[style*="fill:#FFFFFF"], circle[style*="fill:#ffffff"] {
+ fill: none !important;
+ stroke-width: 1.5 !important;
+ }
+ [stroke="#000000"], [stroke="#000"], [stroke="#181818"],
+ [stroke="#222222"], [stroke="#222"], [stroke="#333333"], [stroke="#333"] {
+ stroke: #c9d1d9 !important;
+ }
+ [style*="stroke:#181818"], [style*="stroke: #181818"],
+ [style*="stroke:#000000"], [style*="stroke: #000000"],
+ [style*="stroke:#222222"], [style*="stroke: #222222"],
+ [style*="stroke:#333333"], [style*="stroke: #333333"] {
+ stroke: #c9d1d9 !important;
+ }
+ [style*="stroke:#FFDD88"], [style*="stroke: #FFDD88"],
+ [style*="stroke:#ffdd88"], [style*="stroke: #ffdd88"] {
+ stroke: #6e7681 !important;
+ }
+ text, [fill="#000000"], [fill="#000"], [fill="#181818"], [fill="#222222"] {
+ fill: #c9d1d9 !important;
+ }
+ polygon[fill="#000000"], polygon[fill="#181818"], polygon[fill="#222222"],
+ polygon[fill="#333333"] {
+ fill: #c9d1d9 !important;
+ stroke: #c9d1d9 !important;
+ }
+ rect[style*="stroke:#000000"], rect[style*="stroke: #000000"],
+ rect[style*="stroke:#181818"], rect[style*="stroke: #181818"] {
+ stroke: #c9d1d9 !important;
+ }
+ ellipse[style*="stroke:#000000"], ellipse[style*="stroke: #000000"],
+ ellipse[style*="stroke:#181818"], ellipse[style*="stroke: #181818"] {
+ stroke: #c9d1d9 !important;
+ }
+ polygon[style*="stroke:#000000"], polygon[style*="stroke: #000000"],
+ polygon[style*="stroke:#181818"], polygon[style*="stroke: #181818"],
+ polygon[style*="stroke:#222222"], polygon[style*="stroke: #222222"] {
+ stroke: #c9d1d9 !important;
+ }
+ line[stroke="#181818"], line[stroke="#000000"],
+ line[style*="stroke:#181818"], line[style*="stroke: #181818"],
+ line[style*="stroke:#000000"], line[style*="stroke: #000000"] {
+ stroke: #6e7681 !important;
+ stroke-dasharray: 4 3 !important;
+ }
+  text[font-weight="700"], text[font-weight="bold"] {
+  fill: #f0f6fc !important;
+  }
+   /* Bare elements: PlantUML CSS mode may omit stroke on some shapes */
+   ellipse:not([style*="stroke"]):not([stroke]),
+   circle:not([style*="stroke"]):not([stroke]) {
+   stroke: #c9d1d9 !important;
+   stroke-width: 0.75 !important;
+   }
+   rect[fill="#FFFFFF"]:not([style*="stroke"]):not([stroke]),
+   rect[fill="#ffffff"]:not([style*="stroke"]):not([stroke]) {
+   stroke: #c9d1d9 !important;
+   stroke-width: 0.75 !important;
+   }
+   path[fill="none"]:not([style*="stroke"]):not([stroke]) {
+   stroke: #c9d1d9 !important;
+   stroke-width: 0.75 !important;
+   }
+   /* Swimlane headers rendered with white stroke (invisible on dark canvas) */
+   [style*="stroke:#FFFFFF"], [style*="stroke: #FFFFFF"],
+   [style*="stroke:#ffffff"], [style*="stroke: #ffffff"] {
+   stroke: #c9d1d9 !important;
+   }
+}</style>
+CSSBLOCK
 
-    # SVG-level colour map.  PlantUML monochrome output uses:
-    #   - #FFFFFF / #FAFAFA / #F2F2F2 for fills (canvas, boxes, notes)
-    #   - #000000 for text and some strokes
-    #   - #181818 for most borders / lines
-    # Background colour may also appear as background:#FFFFFF in the root <svg> style.
-    # Build the sed script as a file to avoid command-line length limits.
-    local sed_script
-    sed_script=$(mktemp /tmp/dark-sed-XXXXXX.sed)
-    cat > "$sed_script" <<'SEDSCRIPT'
-s/background:#FFFFFF/background:#1A1A1A/gI
-s/background: #FFFFFF/background: #1A1A1A/gI
-s/fill="#F2F2F2"/fill="#2D2D2D"/gI
-s/fill="#FAFAFA"/fill="#2D2D2D"/gI
-s/fill="#F1F1F1"/fill="#2D2D2D"/gI
-s/fill="#FFFFFF"/fill="#2D2D2D"/gI
-s/fill="#222222"/fill="#C0C0C0"/gI
-s/stroke="#222222"/stroke="#C0C0C0"/gI
-s/stroke="#181818"/stroke="#C0C0C0"/gI
-s/stroke="#000000"/stroke="#C0C0C0"/gI
-s/stroke="#FFFFFF"/stroke="#C0C0C0"/gI
-s/fill="#000000"/fill="#E8E8E8"/gI
-s/fill="#181818"/fill="#C0C0C0"/gI
-s/stroke:#222222/stroke:#C0C0C0/gI
-s/stroke:#181818/stroke:#C0C0C0/gI
-s/stroke:#000000/stroke:#C0C0C0/gI
-s/stroke:#FFFFFF/stroke:#C0C0C0/gI
-s/stroke: #222222/stroke: #C0C0C0/gI
-s/stroke: #181818/stroke: #C0C0C0/gI
-s/stroke: #000000/stroke: #C0C0C0/gI
-s/stroke: #FFFFFF/stroke: #C0C0C0/gI
-s/fill:#222222/fill:#C0C0C0/gI
-s/fill:#181818/fill:#C0C0C0/gI
-s/fill:#000000/fill:#E8E8E8/gI
-s/fill: #222222/fill: #C0C0C0/gI
-s/fill: #181818/fill: #C0C0C0/gI
-s/fill: #000000/fill: #E8E8E8/gI
-s/fill:#FAFAFA/fill:#2D2D2D/gI
-s/fill:#F1F1F1/fill:#2D2D2D/gI
-s/fill:#F2F2F2/fill:#2D2D2D/gI
-s/fill: #FAFAFA/fill: #2D2D2D/gI
-s/fill: #F1F1F1/fill: #2D2D2D/gI
-s/fill: #F2F2F2/fill: #2D2D2D/gI
-SEDSCRIPT
-    sed -i -f "$sed_script" "$dark"
-    rm -f "$sed_script"
+    # Inject CSS block after opening <svg> tag using perl (handles single-line SVGs)
+    perl -pe "BEGIN { open(F,'<','$dark_css_file'); \$css=join('',<F>); close(F); chomp \$css } if (/^<svg/ && !\$done) { s/(<svg[^>]*>)/\$1\n\$css/; \$done=1 }" "$light" > "$dark"
+    rm -f "$dark_css_file"
 }
 
 # postprocess_dark_png — Recolor a light PNG into a dark-themed PNG
@@ -1000,6 +1111,11 @@ while [[ "$FIX_ATTEMPT" -le "$MAX_FIX_ATTEMPTS" ]]; do
 
     break
 done
+
+# ── Fix bare strokes in light SVG (CSS mode may omit strokes on some shapes) ──
+if $RENDER_OK && [[ "$FORMAT" == "svg" ]]; then
+    postprocess_svg_bare_strokes "$OUTPUT_FILE"
+fi
 
 # ── Dark-mode variant (opt-in) ───────────────────────────────────────────────
 DARK_OUTPUT_FILE=""

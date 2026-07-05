@@ -1,7 +1,7 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.6.0
+version: 1.6.1
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
@@ -105,7 +105,8 @@ Write the PlantUML source following these rules:
 1. Start EVERY file with one of the two mandatory uml-diagrams.org-style preambles
    immediately after `@startuml`:
    - **Default**: the `skinparam` preamble — see [OMG-UML / uml-diagrams.org Style Configuration](#omg-uml--uml-diagramsorg-style-configuration-mandatory).
-     Maximum backward compatibility, used by every example except #07.
+      Maximum backward compatibility, used by every example except #07.
+      (Example #07 is a legacy alias of #01_css — same OAuth2 sequence diagram, same CSS preamble.)
    - **Backup option**: the CSS-style `<style>` preamble — see [Alternative — CSS-style Preamble](#alternative--css-style-preamble-modern-backup-option).
      Recommended on PlantUML ≥ 1.2019.9 where `skinparam` is being phased out.
    Pick ONE per file — never mix both inside the same `.puml`.
@@ -196,9 +197,11 @@ bash generate-plantuml.sh diagram.puml ./output --format svg --dark-mode
 
 Behaviour:
 - Light output is rendered normally with the monochrome preamble.
-- The dark companion is produced by post-processing the rendered light image, so PlantUML's `monochrome true` setting does not override the dark palette.
+- The dark companion is produced by injecting a CSS `@media (prefers-color-scheme: dark)` block into the SVG, which automatically adapts to the user's system theme.
 - SVG is fully supported. PNG is supported when ImageMagick `convert` is available. PDF/TXT dark companions are not generated because there is no reliable local post-processor.
-- The dark palette uses `#1A1A1A` canvas, `#2D2D2D` element fills, `#E8E8E8` text, and `#C0C0C0` strokes.
+- The dark palette uses `#1e1e2e` canvas, `#c9d1d9` text/strokes, `#f0f6fc` bold text, and `#6e7681` lifelines.
+- Bare-stroke injection: PlantUML's CSS mode may render some elements (use case ellipses, component rects, actor paths) with `fill="none"` and no `stroke` attribute. The script injects CSS rules to add strokes to these elements in both light (`#000000`) and dark (`#c9d1d9`) variants.
+- **`skinparam style strictuml` is essential** for use case and component diagrams — it has no CSS equivalent. Removing it causes missing borders on ellipses, rects, and actor paths.
 
 **A4 paper fit validation**: After the aspect-ratio check passes, the render script validates the diagram's pixel dimensions against A4 paper. PlantUML writes SVG in CSS pixels at the 96 DPI standard, so A4 (210×297 mm = 8.27×11.69 in) maps to **794×1123 px portrait** or **1123×794 px landscape**. The check is **ON by default** and runs right after the aspect check.
 
@@ -216,7 +219,7 @@ Flags:
 | `--max-aspect N` | `-MaxAspect N` | Upper bound of acceptable width/height band | `1.4` |
 | `--no-a4-check` | `-NoA4Check` | Disable A4 fit validation entirely | off (check ON) |
 | `--min-font-pt N` | `-MinFontPt N` | Minimum legible on-paper font size in pt | `8.0` |
-| `--dark-mode` | `-DarkMode` | Also emit a dark companion (`<basename>.dark.<fmt>`) | off |
+| `--dark-mode` | `-DarkMode` | Also emit a dark companion (`<basename>.dark.<fmt>`) with CSS `@media` theme | off |
 
 Examples:
 ```bash
@@ -237,7 +240,7 @@ powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\ou
 powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -Format svg -MinAspect 0.5 -DarkMode
 ```
 
-A4 fit is skipped automatically for `txt` and `pdf` output (TXT has no image dimensions; PDF is already a print-oriented format the PlantUML renderer pages itself). The check shares the same 2-attempt auto-fix budget as aspect-ratio correction — running both does not double the cap.
+A4 fit is skipped automatically for `txt` and `pdf` output (TXT has no image dimensions; PDF is already a print-oriented format the PlantUML renderer pages itself). The check shares the same 3-attempt auto-fix budget as aspect-ratio correction — running both does not double the cap.
 
 **After rendering, show the user the output.** If SVG is generated, read and display it inline.
 If PNG/PDF is generated, tell the user where the file is saved.
@@ -903,7 +906,7 @@ If CJK characters render as empty boxes (□):
 3. If using Docker, check that font directories are mounted (the script handles this automatically with `--cjk`)
 
 If aspect ratio warnings appear:
-1. The script applies up to 2 automatic corrections (direction toggle + scale)
+1. The script applies up to 3 automatic corrections (direction toggle + scale)
 2. If warnings persist, manually adjust the `.puml`:
    - For too-wide diagrams: add `top to bottom direction` and reduce `skinparam BoxPadding`
    - For too-tall diagrams: add `left to right direction` and reduce `skinparam ParticipantPadding`

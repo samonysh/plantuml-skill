@@ -11,6 +11,8 @@ skinparam sequenceMessageAlign center
 skinparam roundCorner 0
 
 skinparam ActorBackgroundColor #FFFFFF
+skinparam ActorBorderColor #000000
+skinparam ActorBorderThickness 0.75
 skinparam ParticipantBackgroundColor #FFFFFF
 skinparam NoteBackgroundColor #FFFFFF
 skinparam SequenceGroupBackgroundColor #FFFFFF

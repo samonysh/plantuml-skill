@@ -33,10 +33,6 @@ stateDiagram {
 }
 </style>
 
-' These two settings have no CSS equivalent yet — keep as skinparam:
-skinparam style strictuml
-skinparam classAttributeIconSize 0
-
 title Support Ticket Lifecycle
 
 [*] --> New

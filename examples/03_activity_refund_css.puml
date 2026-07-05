@@ -34,10 +34,6 @@ activityDiagram {
 }
 </style>
 
-' These two settings have no CSS equivalent yet — keep as skinparam:
-skinparam style strictuml
-skinparam classAttributeIconSize 0
-
 title Refund Approval Workflow
 
 |Customer|

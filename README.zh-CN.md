@@ -7,7 +7,7 @@
 [![skills.sh](https://skills.sh/b/samonysh/plantuml-skill)](https://skills.sh/samonysh/plantuml-skill)
 [![ClawHub](https://img.shields.io/badge/ClawHub-plantuml--skill-0a66c2?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNy45M2MtMy45NS0uNDktNy0zLjg1LTctNy45MyAwLS40MS4wMy0uODEuMS0xLjIxTDkuOSAxNy4zYzEuMTUuMTggMi4wNy0uNTMgMi4wNy0xLjY4di0yLjM0bDMuOTggNC4wMmMtLjY0LjQxLTEuNDIuNjgtMi4yNS43OHYzLjA4eiIvPjwvc3ZnPg==)](https://clawhub.ai/samonysh/plantuml-skill)
 [![Downloads](https://img.shields.io/badge/downloads-139-green)](https://clawhub.ai/samonysh/plantuml-skill)
-[![Version](https://img.shields.io/badge/version-v1.6.0-blue)](https://clawhub.ai/samonysh/plantuml-skill)
+[![Version](https://img.shields.io/badge/version-v1.6.1-blue)](https://clawhub.ai/samonysh/plantuml-skill)
 [![License](https://img.shields.io/badge/license-MIT--0-lightgrey)](LICENSE)
 
 ## 特性
@@ -172,41 +172,78 @@ skinparam classAttributeIconSize 0  ' 无 CSS 等价物
 
 如需兼容 PlantUML < 1.2019.9 的旧版本，可使用经典 `skinparam` 前言块。两套 preamble 视觉完全一致。详见 [`SKILL.md`](skills/plantuml/SKILL.md) 中的 "Backup — `skinparam` Preamble" 章节。
 
+### 暗色模式
+
+`--dark-mode` 标志会在标准输出旁边生成一个配套的 `.dark.svg`（或 `.dark.png`）。与旧版 sed 逐色替换不同，新方案**在 `<svg>` 标签后注入 CSS `@media (prefers-color-scheme: dark)` 块**：
+
+- **亮色模式**（默认）：白色画布 `#FFFFFF`，黑色笔触 `#000000`
+- **暗色模式**：深色画布 `#1e1e2e`，浅色笔触 `#c9d1d9`，粗体文字 `#f0f6fc`，生命线 `#6e7681` + `stroke-dasharray: 4 3`
+
+SVG 仍是单文件 —— 无 JavaScript、无外部样式表。当查看者的系统或浏览器处于暗色模式时，暗色配色自动生效。在 GitHub 上可用 `<picture>` 配合 `prefers-color-scheme` 实现自动切换：
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagram.dark.svg">
+  <img alt="My Diagram" src="diagram.svg">
+</picture>
+```
+
 ## 示例
 
-所有示例均使用 **CSS `<style>` 前言块**（推荐）。`skinparam` 版本同样保留，供向后兼容使用。
+所有示例均使用 **CSS `<style>` 前言块**（推荐）。每个图表均提供亮色和暗色两个版本 —— GitHub 会根据你的系统暗色模式设置**自动切换**。
 
 ### 时序图 —— OAuth2 授权码模式
 
-![OAuth2 Sequence](examples/01_sequence_oauth2_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
+  <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
+</picture>
 
 ### 类图 —— 订单领域模型
 
-![Order Domain](examples/02_class_order_domain_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
+  <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
+</picture>
 
 ### 活动图 —— 退款审批流程
 
-![Refund Workflow](examples/03_activity_refund_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
+  <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
+</picture>
 
 ### 用例图 —— CMS 内容管理系统
 
-![CMS Use Case](examples/04_usecase_cms_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
+  <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
+</picture>
 
 ### 组件图 —— 电商微服务架构
 
-![Microservices](examples/05_component_microservices_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
+  <img alt="Microservices" src="examples/05_component_microservices_css.svg">
+</picture>
 
 ### 状态图 —— 工单生命周期
 
-![Ticket States](examples/06_state_ticket_css.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
+  <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
+</picture>
 
 ### 时序图 —— OAuth2 流程（skinparam 前言，向后兼容）
 
 与示例 #1 业务相同，但使用经典 `skinparam` 前言块。两套 preamble 视觉完全一致 —— 在 PlantUML ≥ 1.2019.9 上，建议优先采用 CSS 变体。
 
-![OAuth2 Sequence — skinparam variant](examples/01_sequence_oauth2.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
+  <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
+</picture>
 
-所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。可以单独重新渲染某一个：
+所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。每个图表都有配套的 `.dark.svg`，在暗色背景下自动激活。可以单独重新渲染某一个：
 
 ```bash
 bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
@@ -240,19 +277,14 @@ plantuml-skill/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # 向后兼容符号链接
 ├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg          # skinparam 前言（向后兼容）
-│   ├── 01_sequence_oauth2_css.puml / .svg      # CSS 前言（推荐）
-│   ├── 02_class_order_domain.puml / .svg
-│   ├── 02_class_order_domain_css.puml / .svg
-│   ├── 03_activity_refund.puml / .svg
-│   ├── 03_activity_refund_css.puml / .svg
-│   ├── 04_usecase_cms.puml / .svg
-│   ├── 04_usecase_cms_css.puml / .svg
-│   ├── 05_component_microservices.puml / .svg
-│   ├── 05_component_microservices_css.puml / .svg
-│   ├── 06_state_ticket.puml / .svg
-│   ├── 06_state_ticket_css.puml / .svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg   # 旧版 CSS 示例
+│   ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam 前言（向后兼容）
+│   ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS 前言（推荐）
+│   ├── 02_class_order_domain_css.puml / .svg / .dark.svg
+│   ├── 03_activity_refund_css.puml / .svg / .dark.svg
+│   ├── 04_usecase_cms_css.puml / .svg / .dark.svg
+│   ├── 05_component_microservices_css.puml / .svg / .dark.svg
+│   ├── 06_state_ticket_css.puml / .svg / .dark.svg
+│   └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # 01_css 的旧版别名（同一 OAuth2 时序图）
 ├── .gitignore
 ├── README.md           # 英文 README
 └── README.zh-CN.md     # 中文 README（本文件）
@@ -283,7 +315,7 @@ bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output
 bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --cjk
 
 # PNG + 自定义宽高比阈值
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 3.0
+bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 1.4
 
 # ASCII 文本图 — Bash（txt 格式跳过图片渲染）
 bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format txt
@@ -315,7 +347,7 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 
 1. 对 `.puml` 文件应用布局修正指令（方向切换、间距调整）
 2. 重新渲染图表
-3. 再次检查（最多进行 2 次修正尝试）
+3. 再次检查（最多进行 3 次修正尝试）
 
 使用 `--min-aspect` 和 `--max-aspect` 可自定义目标范围。修正过程中会保留文本间距，避免文字拥挤。
 
