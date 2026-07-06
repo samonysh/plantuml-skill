@@ -410,7 +410,7 @@ The runtime privacy warning surfaces the resolved host so you can confirm the
 destination before any data leaves the machine. Custom hosts must expose the
 standard Kroki endpoint shape `<base>/plantuml/<format>`.
 
-### Why Kroki (v1.6.0)
+### Why Kroki (v1.6.1)
 
 Earlier versions of this script used `https://www.plantuml.com/plantuml`.
 That endpoint now sits behind a Cloudflare + Ezoic consent wall (HTTP 302 →
