@@ -201,57 +201,342 @@ use `<picture>` with `prefers-color-scheme` to auto-switch:
 
 All examples use the **CSS `<style>` preamble** (recommended). Each diagram is provided in both light and dark variants — GitHub will **auto-switch** based on your system's dark mode setting.
 
-### Sequence Diagram — OAuth2 Authorization Code Flow
+Every example below shows:
+
+- **Trigger prompt** — the natural-language sentence you can paste into OpenCode to reproduce the diagram.
+- **What it demonstrates** — which UML features and style rules the example exercises.
+- **Source snippet** — a collapsed block containing the key `.puml` lines (open it to see the exact syntax).
+
+### 1. Sequence Diagram — OAuth2 Authorization Code Flow
+
+> **Trigger prompt**
+> `Draw a sequence diagram of the OAuth2 authorization code flow between Resource Owner, Client App, Authorization Server and Resource Server, including token exchange and a note explaining that the authorization code is single-use.`
+
+**Demonstrates**: actors + participants, dashed lifelines, white activation bars, synchronous (`->`) vs return (`-->`) arrows, self-calls, and side notes — all in strict uml-diagrams.org monochrome.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
   <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
 </picture>
 
-### Class Diagram — Order Domain Model
+<details>
+<summary>Source snippet — <code>examples/01_sequence_oauth2_css.puml</code></summary>
+
+```plantuml
+@startuml
+' CSS <style> preamble omitted for brevity — see the full file
+title OAuth2 Authorization Code Flow
+
+actor "Resource Owner" as User
+participant "Client App" as Client
+participant "Authorization Server" as AuthServer
+participant "Resource Server" as Resource
+
+User -> Client: Access protected resource
+Client -> User: Redirect to /authorize
+User -> AuthServer: GET /authorize (client_id, redirect_uri)
+AuthServer -> User: Consent screen (scopes)
+User -> AuthServer: Approve scopes
+AuthServer -> Client: Redirect with authorization code
+Client -> AuthServer: POST /token (code, client_secret)
+AuthServer --> Client: Access Token + Refresh Token
+Client -> Resource: GET /resource (Bearer token)
+Resource --> Client: Protected data
+
+note right of AuthServer
+  Authorization code is
+  single-use, expires in
+  10 minutes
+end note
+@enduml
+```
+
+</details>
+
+### 2. Class Diagram — Order Domain Model
+
+> **Trigger prompt**
+> `Create a class diagram for an e-commerce order domain with Customer, Order, OrderItem, Product, Payment, Shipment and their enums (OrderStatus, PaymentMethod, PaymentStatus, ShipmentStatus). Show 1-to-many and 0..1 multiplicities.`
+
+**Demonstrates**: attributes with `+`/`-` visibility markers (no colored dots), methods with return types, `enum` blocks, association multiplicities (`"1" -- "*"`, `"1" -- "0..1"`), and rounded-corner-free strict OMG boxes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
   <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
 </picture>
 
-### Activity Diagram — Refund Approval Workflow
+<details>
+<summary>Source snippet — <code>examples/02_class_order_domain_css.puml</code></summary>
+
+```plantuml
+class Customer {
+    +id: UUID
+    +name: String
+    +email: String
+    +register()
+    +placeOrder()
+}
+
+class Order {
+    -id: UUID
+    -totalAmount: Decimal
+    -status: OrderStatus
+    +calculateTotal()
+    +cancel()
+}
+
+enum OrderStatus {
+    PENDING
+    CONFIRMED
+    PAID
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+Customer "1" -- "*" Order       : places
+Order    "1" -- "*" OrderItem   : contains
+Order    "1" -- "1" Payment     : paid by
+Order    "1" -- "0..1" Shipment : shipped via
+```
+
+</details>
+
+### 3. Activity Diagram — Refund Approval Workflow
+
+> **Trigger prompt**
+> `Generate an activity diagram for a refund approval workflow with swimlanes for Customer, System, Manager and Payment Gateway. Auto-approve refunds under $100, manager reviews larger ones, and if the request is over 30 days old it's rejected.`
+
+**Demonstrates**: swimlanes (`|Customer|`, `|System|`, …), `start`/`stop` markers, nested `if`/`else` branches, and cross-lane hand-offs — the go-to notation for approval pipelines.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
   <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
 </picture>
 
-### Use Case Diagram — CMS System
+<details>
+<summary>Source snippet — <code>examples/03_activity_refund_css.puml</code></summary>
+
+```plantuml
+|Customer|
+start
+:Submit refund request;
+:Upload receipt;
+
+|System|
+:Validate order eligibility;
+if (Within 30 days?) then (no)
+    :Reject request;
+    stop
+else (yes)
+    if (Amount < $100?) then (yes)
+        :Auto-approve;
+    else (no)
+        |Manager|
+        :Review refund case;
+        if (Approved?) then (yes)
+            :Authorize refund;
+        else (no)
+            :Final reject;
+            stop
+        endif
+    endif
+endif
+
+|Payment Gateway|
+:Process refund;
+stop
+```
+
+</details>
+
+### 4. Use Case Diagram — CMS System
+
+> **Trigger prompt**
+> `Draw a use case diagram for a Content Management System with Author, Editor, Admin and Site Visitor actors. Show include/extend relationships between "Publish Article" → "Review Content" → "Edit Article", and between "Browse Articles" and "Search Content".`
+
+**Demonstrates**: stick-figure actors, `usecase` ellipses inside a system `rectangle`, `<<include>>` and `<<extend>>` dashed dependencies, plus `left to right direction` for compact horizontal layout.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
   <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
 </picture>
 
-### Component Diagram — Microservice Architecture
+<details>
+<summary>Source snippet — <code>examples/04_usecase_cms_css.puml</code></summary>
+
+```plantuml
+left to right direction
+
+actor Author
+actor Editor
+actor Admin
+actor "Site Visitor" as Visitor
+
+rectangle "CMS" {
+    usecase "Create Article"   as UC1
+    usecase "Edit Article"     as UC2
+    usecase "Review Content"   as UC4
+    usecase "Publish Article"  as UC5
+    usecase "Browse Articles"  as UC9
+    usecase "Search Content"   as UC10
+}
+
+Author  --> UC1
+Editor  --> UC4
+Editor  --> UC5
+Admin   --> UC7
+Visitor --> UC9
+
+UC4 ..> UC2  : <<include>>
+UC5 ..> UC4  : <<include>>
+UC9 ..> UC10 : <<extend>>
+```
+
+</details>
+
+### 5. Component Diagram — Microservice Architecture
+
+> **Trigger prompt**
+> `Draw a component diagram for an e-commerce microservice architecture. Group components into "API Gateway" (Rate Limiter, Auth Filter, Router), "Core Services" (Product, Order, Payment, User, Inventory), "Supporting Services" (Notification, Search, Analytics), and "Infrastructure" (PostgreSQL, Redis, RabbitMQ, Elasticsearch, S3). Show service-to-service and service-to-infrastructure calls.`
+
+**Demonstrates**: `package` grouping, `[Component]` boxes, `database` / `cloud` infrastructure nodes, labeled dependencies (`processPayment()`, `reserveStock()`), and inbound actors — enough surface area to stress-test aspect-ratio auto-correction and A4-fit checks.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
   <img alt="Microservices" src="examples/05_component_microservices_css.svg">
 </picture>
 
-### State Diagram — Support Ticket Lifecycle
+<details>
+<summary>Source snippet — <code>examples/05_component_microservices_css.puml</code></summary>
+
+```plantuml
+actor Customer
+actor Admin
+
+package "API Gateway" {
+    [Rate Limiter]
+    [Auth Filter]
+    [Router]
+}
+
+package "Core Services" {
+    [Product Service]
+    [Order Service]
+    [Payment Service]
+    [User Service]
+    [Inventory Service]
+}
+
+package "Infrastructure" {
+    database "PostgreSQL\n(Primary)" as DB
+    database "Redis\n(Cache)"        as Cache
+    cloud    "RabbitMQ\n(Message Queue)" as MQ
+}
+
+Customer --> [Router]
+[Router] --> [Auth Filter]
+[Auth Filter] --> [Rate Limiter]
+[Rate Limiter] --> [Order Service]
+
+[Order Service]   --> [Payment Service]   : processPayment()
+[Order Service]   --> [Inventory Service] : reserveStock()
+[Payment Service] --> [Notification Service] : sendReceipt()
+
+[User Service]    --> DB
+[Product Service] --> Cache : cacheProduct
+[Product Service] --> MQ    : productUpdated
+```
+
+</details>
+
+### 6. State Diagram — Support Ticket Lifecycle
+
+> **Trigger prompt**
+> `Design a state machine for a support ticket lifecycle: New → Assigned → InProgress → Resolved → Closed, plus a Cancelled branch and a Reassigned/PendingCustomer path. InProgress is a composite state containing Investigating → Reproducing → Fixing → Testing. Auto-resolve tickets pending customer input for 72 hours.`
+
+**Demonstrates**: initial (`[*] -->`) and final (`--> [*]`) pseudo-states, transitions with trigger labels, a **composite (nested) state** with its own internal state machine, and an anchored side note documenting the auto-resolve rule.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
   <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
 </picture>
 
-### Sequence Diagram — OAuth2 Flow (skinparam preamble, backward-compatible)
+<details>
+<summary>Source snippet — <code>examples/06_state_ticket_css.puml</code></summary>
 
-Same business scenario as example #1, but uses the legacy `skinparam` preamble.
-Both preambles produce the same uml-diagrams.org look — use the CSS variant on PlantUML ≥ 1.2019.9.
+```plantuml
+[*] --> New
+
+New       --> Assigned    : agent picks up
+New       --> Cancelled   : customer cancels
+Assigned  --> InProgress  : agent starts work
+Assigned  --> Reassigned  : escalated
+Reassigned --> InProgress : new agent starts
+
+state InProgress {
+    [*] --> Investigating
+    Investigating --> Reproducing : identified steps
+    Reproducing   --> Fixing      : root cause found
+    Fixing        --> Testing     : fix applied
+    Testing       --> Investigating : test failed
+    Testing       --> [*]         : test passed
+}
+
+InProgress       --> PendingCustomer : needs customer input
+PendingCustomer  --> InProgress      : customer responds
+PendingCustomer  --> Resolved        : auto-resolve timeout (72h)
+InProgress       --> Resolved        : fix deployed
+Resolved         --> Closed          : customer confirms
+Resolved         --> InProgress      : customer disputes (reopen)
+
+Cancelled --> [*]
+Closed    --> [*]
+
+note right of PendingCustomer
+  System auto-resolves if
+  customer does not respond
+  within 72 hours
+end note
+```
+
+</details>
+
+### 7. Sequence Diagram — OAuth2 Flow (skinparam preamble, backward-compatible)
+
+> **Trigger prompt**
+> `Same OAuth2 sequence diagram as example #1, but generate it with the legacy skinparam preamble so it renders correctly on PlantUML versions older than 1.2019.9.`
+
+**Demonstrates**: the identical business scenario as example #1, rendered with the classic `skinparam` preamble instead of the CSS `<style>` block. Compare the two side-by-side to confirm both preambles produce a visually identical uml-diagrams.org look.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
   <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
 </picture>
+
+<details>
+<summary>Source snippet — <code>examples/01_sequence_oauth2.puml</code> (skinparam preamble)</summary>
+
+```plantuml
+@startuml
+' Classic skinparam preamble — works on PlantUML < 1.2019.9
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam roundCorner 0
+skinparam SequenceLifeLineBorderColor #000000
+skinparam SequenceActivationBackgroundColor #FFFFFF
+
+' ... same actors + participants + messages as example #1 ...
+@enduml
+```
+
+</details>
+
+---
 
 All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. Each has a companion `.dark.svg` that activates automatically on dark backgrounds. You can regenerate any single one:
 

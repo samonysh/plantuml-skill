@@ -192,56 +192,342 @@ SVG 仍是单文件 —— 无 JavaScript、无外部样式表。当查看者的
 
 所有示例均使用 **CSS `<style>` 前言块**（推荐）。每个图表均提供亮色和暗色两个版本 —— GitHub 会根据你的系统暗色模式设置**自动切换**。
 
-### 时序图 —— OAuth2 授权码模式
+每个示例下方都包含三部分内容：
+
+- **触发提示词** —— 可以直接粘贴到 OpenCode 里复现该图表的中文自然语言指令。
+- **示例要点** —— 该图表用到了哪些 UML 特性和风格规约。
+- **源码片段** —— 折叠展示关键 `.puml` 代码（展开可查看完整语法）。
+
+### 1. 时序图 —— OAuth2 授权码模式
+
+> **触发提示词**
+> `画一张 OAuth2 授权码模式的时序图，参与方包括资源所有者、客户端应用、授权服务器和资源服务器，展示令牌交换过程，并在授权服务器旁加一条备注说明授权码为单次使用。`
+
+**示例要点**：actor（棒人）+ participant 混用、虚线生命线、白色激活条、同步调用（`->`）与异步返回（`-->`）箭头、自调用以及侧边 note —— 全部使用 uml-diagrams.org 严格单色风格。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
   <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
 </picture>
 
-### 类图 —— 订单领域模型
+<details>
+<summary>源码片段 —— <code>examples/01_sequence_oauth2_css.puml</code></summary>
+
+```plantuml
+@startuml
+' CSS <style> 前言块已省略 —— 完整内容见源文件
+title OAuth2 Authorization Code Flow
+
+actor "Resource Owner" as User
+participant "Client App" as Client
+participant "Authorization Server" as AuthServer
+participant "Resource Server" as Resource
+
+User -> Client: Access protected resource
+Client -> User: Redirect to /authorize
+User -> AuthServer: GET /authorize (client_id, redirect_uri)
+AuthServer -> User: Consent screen (scopes)
+User -> AuthServer: Approve scopes
+AuthServer -> Client: Redirect with authorization code
+Client -> AuthServer: POST /token (code, client_secret)
+AuthServer --> Client: Access Token + Refresh Token
+Client -> Resource: GET /resource (Bearer token)
+Resource --> Client: Protected data
+
+note right of AuthServer
+  Authorization code is
+  single-use, expires in
+  10 minutes
+end note
+@enduml
+```
+
+</details>
+
+### 2. 类图 —— 订单领域模型
+
+> **触发提示词**
+> `帮我生成一张电商订单领域模型的类图，包含 Customer、Order、OrderItem、Product、Payment、Shipment 以及对应的枚举（OrderStatus、PaymentMethod、PaymentStatus、ShipmentStatus），标注一对多、一对一以及 0..1 的关联多重性。`
+
+**示例要点**：使用 `+`/`-` 文本可见性标记（不使用彩色圆点）、方法带返回类型、`enum` 枚举块、关联多重性（`"1" -- "*"`、`"1" -- "0..1"`）、以及无圆角的严格 OMG 矩形框。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
   <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
 </picture>
 
-### 活动图 —— 退款审批流程
+<details>
+<summary>源码片段 —— <code>examples/02_class_order_domain_css.puml</code></summary>
+
+```plantuml
+class Customer {
+    +id: UUID
+    +name: String
+    +email: String
+    +register()
+    +placeOrder()
+}
+
+class Order {
+    -id: UUID
+    -totalAmount: Decimal
+    -status: OrderStatus
+    +calculateTotal()
+    +cancel()
+}
+
+enum OrderStatus {
+    PENDING
+    CONFIRMED
+    PAID
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+Customer "1" -- "*" Order       : places
+Order    "1" -- "*" OrderItem   : contains
+Order    "1" -- "1" Payment     : paid by
+Order    "1" -- "0..1" Shipment : shipped via
+```
+
+</details>
+
+### 3. 活动图 —— 退款审批流程
+
+> **触发提示词**
+> `绘制一张带泳道的退款审批流程活动图，泳道包括客户、系统、经理和支付网关。金额小于 $100 自动审批，大额由经理复核，超过 30 天的申请直接拒绝。`
+
+**示例要点**：泳道语法（`|客户|`、`|系统|`…）、`start` / `stop` 起止标记、多层嵌套的 `if`/`else` 判断、跨泳道流转 —— 是审批与流水线场景的首选表达。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
   <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
 </picture>
 
-### 用例图 —— CMS 内容管理系统
+<details>
+<summary>源码片段 —— <code>examples/03_activity_refund_css.puml</code></summary>
+
+```plantuml
+|Customer|
+start
+:Submit refund request;
+:Upload receipt;
+
+|System|
+:Validate order eligibility;
+if (Within 30 days?) then (no)
+    :Reject request;
+    stop
+else (yes)
+    if (Amount < $100?) then (yes)
+        :Auto-approve;
+    else (no)
+        |Manager|
+        :Review refund case;
+        if (Approved?) then (yes)
+            :Authorize refund;
+        else (no)
+            :Final reject;
+            stop
+        endif
+    endif
+endif
+
+|Payment Gateway|
+:Process refund;
+stop
+```
+
+</details>
+
+### 4. 用例图 —— CMS 内容管理系统
+
+> **触发提示词**
+> `画一张内容管理系统 CMS 的用例图，参与角色包括作者（Author）、编辑（Editor）、管理员（Admin）和访客（Site Visitor）。展示"发布文章 → 审核内容 → 编辑文章"之间的 include 关系，以及"浏览文章"与"搜索内容"之间的 extend 关系。`
+
+**示例要点**：棒人 actor、系统边界 `rectangle` 内的 `usecase` 椭圆、`<<include>>` / `<<extend>>` 虚线依赖，以及使用 `left to right direction` 让整图横向紧凑排布。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
   <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
 </picture>
 
-### 组件图 —— 电商微服务架构
+<details>
+<summary>源码片段 —— <code>examples/04_usecase_cms_css.puml</code></summary>
+
+```plantuml
+left to right direction
+
+actor Author
+actor Editor
+actor Admin
+actor "Site Visitor" as Visitor
+
+rectangle "CMS" {
+    usecase "Create Article"   as UC1
+    usecase "Edit Article"     as UC2
+    usecase "Review Content"   as UC4
+    usecase "Publish Article"  as UC5
+    usecase "Browse Articles"  as UC9
+    usecase "Search Content"   as UC10
+}
+
+Author  --> UC1
+Editor  --> UC4
+Editor  --> UC5
+Admin   --> UC7
+Visitor --> UC9
+
+UC4 ..> UC2  : <<include>>
+UC5 ..> UC4  : <<include>>
+UC9 ..> UC10 : <<extend>>
+```
+
+</details>
+
+### 5. 组件图 —— 电商微服务架构
+
+> **触发提示词**
+> `画一张电商微服务架构的组件图，把组件按四个 package 分组：API 网关（Rate Limiter、Auth Filter、Router）、核心服务（Product、Order、Payment、User、Inventory）、支撑服务（Notification、Search、Analytics）、基础设施（PostgreSQL、Redis、RabbitMQ、Elasticsearch、S3）。请标出服务之间以及服务到基础设施的调用关系。`
+
+**示例要点**：使用 `package` 分组、`[组件]` 方括号语法、`database` / `cloud` 表示基础设施节点、在依赖箭头上标注接口方法（`processPayment()`、`reserveStock()`），并接入外部 actor —— 复杂度足以触发宽高比自动修正与 A4 适配检查。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
   <img alt="Microservices" src="examples/05_component_microservices_css.svg">
 </picture>
 
-### 状态图 —— 工单生命周期
+<details>
+<summary>源码片段 —— <code>examples/05_component_microservices_css.puml</code></summary>
+
+```plantuml
+actor Customer
+actor Admin
+
+package "API Gateway" {
+    [Rate Limiter]
+    [Auth Filter]
+    [Router]
+}
+
+package "Core Services" {
+    [Product Service]
+    [Order Service]
+    [Payment Service]
+    [User Service]
+    [Inventory Service]
+}
+
+package "Infrastructure" {
+    database "PostgreSQL\n(Primary)" as DB
+    database "Redis\n(Cache)"        as Cache
+    cloud    "RabbitMQ\n(Message Queue)" as MQ
+}
+
+Customer --> [Router]
+[Router] --> [Auth Filter]
+[Auth Filter] --> [Rate Limiter]
+[Rate Limiter] --> [Order Service]
+
+[Order Service]   --> [Payment Service]   : processPayment()
+[Order Service]   --> [Inventory Service] : reserveStock()
+[Payment Service] --> [Notification Service] : sendReceipt()
+
+[User Service]    --> DB
+[Product Service] --> Cache : cacheProduct
+[Product Service] --> MQ    : productUpdated
+```
+
+</details>
+
+### 6. 状态图 —— 工单生命周期
+
+> **触发提示词**
+> `设计一张客服工单生命周期的状态图：New → Assigned → InProgress → Resolved → Closed，并且包含 Cancelled 分支和 Reassigned/PendingCustomer 支线。其中 InProgress 是一个复合状态，内部包含 Investigating → Reproducing → Fixing → Testing 的子状态机。等待客户回复超过 72 小时的工单需要自动 resolved。`
+
+**示例要点**：初始伪状态（`[*] -->`）与终止伪状态（`--> [*]`）、带触发条件的状态迁移、**复合（嵌套）状态**内嵌独立子状态机，以及用于说明超时规则的锚定 note。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
   <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
 </picture>
 
-### 时序图 —— OAuth2 流程（skinparam 前言，向后兼容）
+<details>
+<summary>源码片段 —— <code>examples/06_state_ticket_css.puml</code></summary>
 
-与示例 #1 业务相同，但使用经典 `skinparam` 前言块。两套 preamble 视觉完全一致 —— 在 PlantUML ≥ 1.2019.9 上，建议优先采用 CSS 变体。
+```plantuml
+[*] --> New
+
+New       --> Assigned    : agent picks up
+New       --> Cancelled   : customer cancels
+Assigned  --> InProgress  : agent starts work
+Assigned  --> Reassigned  : escalated
+Reassigned --> InProgress : new agent starts
+
+state InProgress {
+    [*] --> Investigating
+    Investigating --> Reproducing : identified steps
+    Reproducing   --> Fixing      : root cause found
+    Fixing        --> Testing     : fix applied
+    Testing       --> Investigating : test failed
+    Testing       --> [*]         : test passed
+}
+
+InProgress       --> PendingCustomer : needs customer input
+PendingCustomer  --> InProgress      : customer responds
+PendingCustomer  --> Resolved        : auto-resolve timeout (72h)
+InProgress       --> Resolved        : fix deployed
+Resolved         --> Closed          : customer confirms
+Resolved         --> InProgress      : customer disputes (reopen)
+
+Cancelled --> [*]
+Closed    --> [*]
+
+note right of PendingCustomer
+  System auto-resolves if
+  customer does not respond
+  within 72 hours
+end note
+```
+
+</details>
+
+### 7. 时序图 —— OAuth2 流程（skinparam 前言，向后兼容）
+
+> **触发提示词**
+> `画一张和示例 #1 完全相同业务的 OAuth2 时序图，但改用旧版 skinparam 前言块生成，使其在 PlantUML 1.2019.9 之前的老版本上也能正确渲染。`
+
+**示例要点**：与示例 #1 业务完全一致，仅将 CSS `<style>` 前言块替换为经典 `skinparam` 语法。两张图并列对比即可确认：两套 preamble 视觉效果完全相同，都是 uml-diagrams.org 风格。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
   <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
 </picture>
+
+<details>
+<summary>源码片段 —— <code>examples/01_sequence_oauth2.puml</code>（skinparam 前言）</summary>
+
+```plantuml
+@startuml
+' 经典 skinparam 前言 —— 兼容 PlantUML < 1.2019.9
+skinparam style strictuml
+skinparam monochrome true
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam roundCorner 0
+skinparam SequenceLifeLineBorderColor #000000
+skinparam SequenceActivationBackgroundColor #FFFFFF
+
+' ... 后续 actor / participant / 消息定义与示例 #1 完全相同 ...
+@enduml
+```
+
+</details>
+
+---
 
 所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。每个图表都有配套的 `.dark.svg`，在暗色背景下自动激活。可以单独重新渲染某一个：
 
