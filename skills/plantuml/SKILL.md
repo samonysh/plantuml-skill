@@ -45,8 +45,8 @@ No exceptions unless the user explicitly requests otherwise.
 - **Black and white only**: Pure black lines (`#000000`) on a pure white background (`#FFFFFF`). No colors, no grayscale fills, no gradients, no themed accents.
 - **Thin uniform line weight**: All borders, arrows and connectors use the default hair-line stroke (≈0.75pt). Never thicken or stylize lines.
 - **No circle visibility icons**: Class attributes MUST NOT show colored circle icons (● public / ◐ protected / ○ private). Enforced via `skinparam classAttributeIconSize 0`. Use `+ - # ~` text markers only.
-- **No circle stereotype icons**: Class and interface headers MUST NOT show circle-with-letter icons (Ⓒ / Ⓘ / Ⓐ / Ⓔ). `skinparam style strictuml` enforces text stereotypes (`«interface»`, `«abstract»`, `«enumeration»`). Always declare interfaces/abstract classes via `class <<interface>>` or `class <<abstract>>` — never use the `interface` or `abstract class` keywords.
-- **Abstract classifiers in italics**: Per UML 2.5 §9 and uml-diagrams.org "Name of an abstract classifier is shown in italics" — using the `<<abstract>>` text stereotype with `strictuml` produces the correct italic rendering automatically.
+- **No circle stereotype icons**: Class and interface headers MUST NOT show circle-with-letter icons (Ⓒ / Ⓘ / Ⓐ / Ⓔ). Instead of relying on `skinparam style strictuml` (which degrades actors into plain text and use cases into rectangles — see [Common Failure Patterns](#common-failure-patterns)), we suppress the circle adornments purely at the **syntax level**: always declare interfaces / abstract classes / enumerations via a `class <<interface>>` / `class <<abstract>>` / `class <<enumeration>>` text stereotype — never use the `interface` / `abstract class` / `enum` keywords, which are what trigger the circle icons in the first place.
+- **Abstract classifiers in italics**: Per UML 2.5 §9 and uml-diagrams.org "Name of an abstract classifier is shown in italics" — the `<<abstract>>` text stereotype combined with `{abstract}` method markers renders correctly without needing `strictuml`.
 - **No 3D effects**: Drop shadows MUST be disabled (`skinparam shadowing false`).
 - **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles. When CJK characters are present, use `--cjk` flag to switch to a CJK-compatible font (see [CJK Font Support](#cjk-chinesejapanesekorean-font-support)).
 - **Aspect ratio**: Generated diagrams are automatically validated for an aspect-ratio band. By default the renderer tries to keep width/height between **0.7 and 1.4** (a comfortable page-like shape), re-rendering with layout corrections when the output falls outside that band. Diagrams that cannot be fixed safely after a few attempts are kept with a warning, so unusual diagrams are not destroyed. Use `--no-fix` to disable this behavior (see Step 3).
@@ -201,7 +201,7 @@ Behaviour:
 - SVG is fully supported. PNG is supported when ImageMagick `convert` is available. PDF/TXT dark companions are not generated because there is no reliable local post-processor.
 - The dark palette uses `#1e1e2e` canvas, `#c9d1d9` text/strokes, `#f0f6fc` bold text, and `#6e7681` lifelines.
 - Bare-stroke injection: PlantUML's CSS mode may render some elements (use case ellipses, component rects, actor paths) with `fill="none"` and no `stroke` attribute. The script injects CSS rules to add strokes to these elements in both light (`#000000`) and dark (`#c9d1d9`) variants.
-- **`skinparam style strictuml` is essential** for use case and component diagrams — it has no CSS equivalent. Removing it causes missing borders on ellipses, rects, and actor paths.
+- **`skinparam style strictuml` is FORBIDDEN** — despite past documentation claiming it was "essential", `strictuml` actively degrades key UML shapes: actors collapse into plain-text labels, use cases collapse from ellipses into rectangles, and classes lose their header separator. The correct fix is a **complete per-element skinparam block** (see [OMG-UML Style Configuration](#omg-uml--uml-diagramsorg-style-configuration-mandatory)) that explicitly sets `BackgroundColor`/`BorderColor`/`FontColor` for every element category. The render script also **defensively strips** any leftover `skinparam style strictuml` line before dispatching to the backend, so even if a diagram source accidentally re-introduces it, the rendering pipeline will remove it.
 
 **A4 paper fit validation**: After the aspect-ratio check passes, the render script validates the diagram's pixel dimensions against A4 paper. PlantUML writes SVG in CSS pixels at the 96 DPI standard, so A4 (210×297 mm = 8.27×11.69 in) maps to **794×1123 px portrait** or **1123×794 px landscape**. The check is **ON by default** and runs right after the aspect check.
 
@@ -432,7 +432,6 @@ classDiagram {
   arrow { LineColor #000000; LineThickness 0.75 }
 }
 </style>
-skinparam style strictuml
 skinparam classAttributeIconSize 0
 
 title Payment System
@@ -765,9 +764,32 @@ stateDiagram {
 }
 </style>
 
-' Two settings still have NO CSS equivalent yet — keep them as skinparams:
-skinparam style strictuml
+' ── Per-element skinparam fallback (mandatory) ─────────────────────────────
+' The CSS <style> block above does NOT cover every PlantUML element category.
+' Without the following block, some shapes fall back to PlantUML defaults
+' (yellow activation bars, coloured actors, grey component fills, etc.).
+' NEVER add `skinparam style strictuml` — it degrades actors into plain text
+' and use cases into rectangles.
 skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontColor #000000
+
+skinparam actor       { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam usecase     { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam rectangle   { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam class       { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam object      { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam component   { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam interface   { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam package     { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam node        { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam database    { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam cloud       { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam state       { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam activity    { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
+skinparam sequence    { ArrowColor #000000; LifeLineBorderColor #000000; LifeLineBackgroundColor #FFFFFF; ParticipantBackgroundColor #FFFFFF; ParticipantBorderColor #000000; ActorBackgroundColor #FFFFFF; ActorBorderColor #000000; BoxBackgroundColor #FFFFFF; BoxBorderColor #000000 }
+skinparam note        { BackgroundColor #FFFFFF; BorderColor #000000; FontColor #000000 }
 ```
 
 **What each CSS block does (mapped to uml-diagrams.org figures):**
@@ -788,14 +810,55 @@ skinparam classAttributeIconSize 0
 | `componentDiagram` | White components and packages — no colored fills. |
 | `stateDiagram.state` | White fill, black border — no grey fills. |
 
-**Two skinparam settings have NO CSS equivalent yet** (as of PlantUML 1.2026.x):
-- `skinparam style strictuml` — enforces text stereotypes (`«interface»`, `«abstract»`, `«enumeration»`) and removes circle adornments
-- `skinparam classAttributeIconSize 0` — removes coloured visibility dots (●/◐/○)
+**STYLING POLICY — keep the FULL preamble, NEVER use `strictuml`**
 
-These must remain as `skinparam` lines beside the `<style>` block. This is the only place
-where the two systems must coexist.
+The CSS `<style>` block above tells PlantUML how to render **CSS-aware** elements
+(sequence lifelines, class boxes, activity nodes, notes). It does **NOT** cover
+every PlantUML element category — actor stick-figures, use case ellipses,
+component silhouettes, database cylinders and cloud shapes still fall back to
+PlantUML's built-in defaults (colored fills, yellow activation bars, missing
+borders on white canvas) when only a `<style>` block is present.
 
-### Backup — `skinparam` Preamble (backward-compatible)
+The **per-element `skinparam` block** immediately after `</style>` is therefore
+mandatory — treat CSS and skinparam as **complementary layers**, not
+alternatives. Together they guarantee black borders + white fills for actor /
+usecase / rectangle / class / component / interface / package / node / database
+/ cloud / state / activity / sequence / note across every diagram type and both
+light and dark backgrounds.
+
+The **only** allowed `skinparam ... style` value is the default — do NOT add
+`skinparam style strictuml`. Even though `strictuml` sounds like a "make it
+more UML-compliant" flag, in practice it:
+
+- collapses `actor Foo` from a stick figure into a plain text label
+- collapses `usecase "X" as UC` from an ellipse into a plain rectangle
+- removes the class-header separator line so name/attribute/method sections merge
+
+The render script also **defensively strips** any leftover
+`skinparam style strictuml` line before dispatching to the backend, so
+accidental re-introductions from user edits or LLM output are neutralized at
+the pipeline level.
+
+`skinparam classAttributeIconSize 0` is retained separately because it only
+removes the colored visibility dots (●/◐/○) and has no side effects on shapes.
+
+### Common Failure Patterns
+
+Symptoms and their root cause — check this list first if a rendered diagram
+looks visually wrong:
+
+| Symptom | Root cause | Fix |
+|---|---|---|
+| Actor rendered as bare text, no stick figure | `skinparam style strictuml` in the source | Remove the line; rely on the per-element skinparam fallback (the render script also auto-strips it). |
+| Use case rendered as a plain rectangle instead of an ellipse | Same as above (`strictuml`) | Same as above. |
+| Class header separator line missing / name+attributes merged | Same as above (`strictuml`) | Same as above. |
+| Ellipses / actor paths lose their black border on light background | CSS `<style>` alone is used; the per-element `skinparam actor/usecase` block is missing | Restore the full preamble including the per-element skinparam fallback block. |
+| Sequence activation bar rendered yellow instead of white | Missing `skinparam sequence { ActorBackgroundColor #FFFFFF ... }` | Restore the full preamble. |
+| Class attributes show `●` / `◐` / `○` visibility icons | Missing `skinparam classAttributeIconSize 0` | Add the line. |
+| Header header sub-elements show `Ⓒ`/`Ⓘ`/`Ⓐ`/`Ⓔ` circle icons | Diagram used `interface Foo` / `abstract class Foo` / `enum Foo` keywords | Rewrite as `class Foo <<interface>>` / `class Foo <<abstract>>` / `class Foo <<enumeration>>`. |
+| Any decorative color / gradient / drop shadow appears | A `!theme` directive or extra `skinparam ...Color` overrides sneaked in | Remove them; the mandatory preamble is the single source of styling truth. |
+
+### Backup - `skinparam` Preamble (backward-compatible)
 
 Use this preamble only when you need maximum backward compatibility with PlantUML < 1.2019.9.
 Both preambles produce the **same uml-diagrams.org reference look**.
@@ -807,7 +870,6 @@ skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica
 skinparam defaultFontSize 12
 skinparam shadowing false
-skinparam style strictuml
 skinparam classAttributeIconSize 0
 skinparam sequenceMessageAlign center
 skinparam roundCorner 0

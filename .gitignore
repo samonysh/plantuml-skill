@@ -11,6 +11,14 @@ output/
 
 # Release artifacts (built locally, distributed via GitHub Releases)
 dist/
+*.tar.gz
+
+# Local release config (copy from scripts/.env.example)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
 
 # System files
 .DS_Store

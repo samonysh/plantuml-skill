@@ -153,7 +153,9 @@ root {
 }
 /* ... 各图表类型作用域样式 ... */
 </style>
-skinparam style strictuml           ' 无 CSS 等价物
+' 注意：不要写 `skinparam style strictuml` -- 它会把 actor 退化成纯文字、把
+' use case 退化成矩形。详见 SKILL.md -> Common Failure Patterns。
+' 改用下面的 per-element skinparam 兜底块（actor/usecase/rectangle/class/...）。
 skinparam classAttributeIconSize 0  ' 无 CSS 等价物
 ```
 
@@ -510,8 +512,9 @@ end note
 
 ```plantuml
 @startuml
-' 经典 skinparam 前言 —— 兼容 PlantUML < 1.2019.9
-skinparam style strictuml
+' 经典 skinparam 前言 -- 兼容 PlantUML < 1.2019.9
+' 注意：不要写 `skinparam style strictuml` -- 它会把 actor 退化成纯文字、把
+' use case 退化成矩形。详见 SKILL.md -> Common Failure Patterns。
 skinparam monochrome true
 skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica

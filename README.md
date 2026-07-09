@@ -146,8 +146,10 @@ black-and-white rendered with Visio UML 2.x stencils (the same style used on
 https://www.uml-diagrams.org):
 
 ```
-' uml-diagrams.org reference style — strict OMG UML 2.x, monochrome
-skinparam style strictuml
+' uml-diagrams.org reference style - strict OMG UML 2.x, monochrome
+' NOTE: do NOT add `skinparam style strictuml` - it degrades actors into
+' plain text and use cases into rectangles. See SKILL.md -> Common Failure
+' Patterns. Use the per-element skinparam block instead.
 skinparam monochrome true
 skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica
@@ -519,8 +521,10 @@ end note
 
 ```plantuml
 @startuml
-' Classic skinparam preamble — works on PlantUML < 1.2019.9
-skinparam style strictuml
+' Classic skinparam preamble - works on PlantUML < 1.2019.9
+' NOTE: do NOT add `skinparam style strictuml` - it degrades actors into
+' plain text and use cases into rectangles. See SKILL.md -> Common Failure
+' Patterns.
 skinparam monochrome true
 skinparam backgroundColor #FFFFFF
 skinparam defaultFontName Helvetica
@@ -722,6 +726,35 @@ When `--cjk` is combined with the Docker backend, the script mounts host
 font directories **read-only** so PlantUML can find CJK fonts. The mounts
 are scoped to font directories only and are used solely inside the
 throwaway PlantUML container — no host data is written.
+
+## Releasing a New Version
+
+Releases are managed by a single Python script, [scripts/release.py](scripts/release.py),
+which replaces the legacy `release.sh`. It is environment-driven (see
+[scripts/.env.example](scripts/.env.example)) and runs the full pipeline:
+
+1. **check** - preflight: version format, cross-file version consistency, no
+   leftover `skinparam style strictuml`, required CLIs authenticated
+2. **build** - build `dist/plantuml-skill-v<version>.tar.gz` (honors
+   `.clawhubignore`)
+3. **push** - commit version bumps and push to `main`
+4. **gh-release** - create the `v<version>` tag and a GitHub Release with the
+   archive attached via `gh`
+5. **clawhub-publish** - publish the skill to ClawHub via `clawhub`
+
+```bash
+# Full release
+python scripts/release.py 1.7.1
+
+# Preview without side effects
+python scripts/release.py 1.7.1 --dry-run
+
+# Run a single step
+python scripts/release.py 1.7.1 --step check
+```
+
+See [RELEASE.md](RELEASE.md) for the full configuration reference and
+troubleshooting.
 
 ## License
 

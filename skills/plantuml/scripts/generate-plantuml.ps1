@@ -199,6 +199,28 @@ function Test-BinaryOk {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Source Sanitization (defensive)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Strip `skinparam style strictuml` from the source before dispatching to the
+# backend. `strictuml` degrades key UML shapes (actors → text, use cases →
+# rectangles, class header separator lost). All OTHER skinparam lines are
+# preserved untouched. Emits a single stderr log line the first time it
+# removes a match.
+function Sanitize-PumlSource {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $lines = Get-Content -LiteralPath $Path -Encoding UTF8
+    $pattern = '^\s*skinparam\s+style\s+strictuml\s*$'
+    $matched = $lines | Where-Object { $_ -match $pattern }
+    if ($matched) {
+        [Console]::Error.WriteLine("  i Stripped forbidden 'skinparam style strictuml' (see SKILL.md -> Common Failure Patterns)")
+        $filtered = $lines | Where-Object { $_ -notmatch $pattern }
+        Set-Content -LiteralPath $Path -Value $filtered -Encoding UTF8
+    }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CJK Font Detection & Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -901,12 +923,20 @@ if (-not $Cjk) {
 }
 
 # ── Prepare working copy ─────────────────────────────────────────────────────
-$workCopy = $InputPath
+# Always work on a copy so sanitization/CJK/aspect/A4 mutations never touch the
+# original .puml on disk.
+$tmpRoot = if ($env:TEMP) { $env:TEMP } elseif ($env:TMP) { $env:TMP } else { [System.IO.Path]::GetTempPath() }
+$workCopy = Join-Path $tmpRoot ("plantuml_src_" + [System.Guid]::NewGuid().ToString("N") + ".puml")
+Copy-Item -LiteralPath $InputPath -Destination $workCopy -Force
+Sanitize-PumlSource $workCopy
+
 $cjkCopy = $null
 if ($Cjk) {
     Write-Host "🔤 CJK mode enabled: configuring CJK-compatible fonts"
-    $cjkCopy = Prepare-PumlForCjk $InputPath
+    $cjkCopy = Prepare-PumlForCjk $workCopy
+    Remove-Item -LiteralPath $workCopy -Force -ErrorAction SilentlyContinue
     $workCopy = $cjkCopy
+    Sanitize-PumlSource $workCopy
 }
 
 # ── Render with aspect-ratio + A4-fit correction loop ────────────────────────

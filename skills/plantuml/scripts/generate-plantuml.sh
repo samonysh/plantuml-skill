@@ -225,6 +225,28 @@ detect_binary_ok() {
 echo "🖼️  Converting $INPUT → $OUTPUT_FILE (format: $FORMAT)"
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Source Sanitization (defensive)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Strip `skinparam style strictuml` from the source before dispatching to the
+# backend. `strictuml` degrades key UML shapes (actors → text, use cases →
+# rectangles, class header separator lost) and there is no CSS equivalent that
+# fixes those regressions. We use a per-element skinparam fallback block in
+# SKILL.md instead. All OTHER skinparam lines are preserved untouched.
+#
+# The function edits the file in place and emits ONE stderr log line the first
+# time it removes a match, so users can trace why a manual `strictuml` line
+# disappeared without being spammed by warnings on repeated invocations.
+sanitize_puml_source() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if grep -qiE '^[[:space:]]*skinparam[[:space:]]+style[[:space:]]+strictuml[[:space:]]*$' "$file"; then
+        echo "  ⓘ Stripped forbidden 'skinparam style strictuml' (see SKILL.md → Common Failure Patterns)" >&2
+        sed -i -E '/^[[:space:]]*skinparam[[:space:]]+style[[:space:]]+strictuml[[:space:]]*$/d' "$file"
+    fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CJK Font Detection & Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1005,12 +1027,19 @@ if ! $CJK; then
 fi
 
 # ── Prepare working copy ─────────────────────────────────────────────────────
-WORK_COPY="$INPUT"
+# Always work on a copy so sanitization/CJK/aspect/A4 mutations never touch the
+# original .puml on disk.
+WORK_COPY="${PORTABLE_TMP}/plantuml_src_$$.puml"
+cp "$INPUT" "$WORK_COPY"
+sanitize_puml_source "$WORK_COPY"
+
 CJK_COPY=""
 if $CJK; then
     echo "🔤 CJK mode enabled: configuring CJK-compatible fonts"
-    CJK_COPY=$(prepare_puml_for_cjk "$INPUT")
+    CJK_COPY=$(prepare_puml_for_cjk "$WORK_COPY")
+    rm -f "$WORK_COPY"
     WORK_COPY="$CJK_COPY"
+    sanitize_puml_source "$WORK_COPY"
 fi
 
 # ── Render ───────────────────────────────────────────────────────────────────
