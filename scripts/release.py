@@ -102,12 +102,30 @@ class CmdResult:
     stderr: str
 
 
+def _resolve_for_subprocess(cmd: list[str]) -> tuple:
+    """Resolve a command for subprocess.run.
+
+    On Windows, CLI wrappers shipped as .CMD/.BAT (e.g. clawhub.CMD) cannot be
+    launched directly by CreateProcess - they need cmd.exe to interpret them.
+    For those, return a quoted command string with shell=True. Real .exe files
+    (git, gh) pass through unchanged with shell=False.
+    """
+    if os.name == "nt":
+        resolved = shutil.which(cmd[0])
+        if resolved and resolved.lower().endswith((".cmd", ".bat")):
+            cmd_str = subprocess.list2cmdline([resolved] + list(cmd[1:]))
+            return cmd_str, True
+    return cmd, False
+
+
 def run(cmd: list[str], *, capture: bool = False, check: bool = True,
         cwd: Optional[Path] = None) -> CmdResult:
     """Run a command; by default streams output, optionally captures."""
+    actual_cmd, use_shell = _resolve_for_subprocess(cmd)
     if capture:
-        proc = subprocess.run(cmd, cwd=cwd, text=True,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.run(actual_cmd, cwd=cwd, text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              shell=use_shell)
         if check and proc.returncode != 0:
             error(f"Command failed: {' '.join(cmd)}")
             if proc.stderr.strip():
@@ -115,7 +133,7 @@ def run(cmd: list[str], *, capture: bool = False, check: bool = True,
             raise SystemExit(proc.returncode)
         return CmdResult(proc.returncode, proc.stdout, proc.stderr)
     else:
-        proc = subprocess.run(cmd, cwd=cwd)
+        proc = subprocess.run(actual_cmd, cwd=cwd, shell=use_shell)
         if check and proc.returncode != 0:
             error(f"Command failed: {' '.join(cmd)}")
             raise SystemExit(proc.returncode)
