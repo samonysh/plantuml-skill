@@ -1,6 +1,6 @@
 {
   "name": "plantuml-skill",
-  "version": "1.6.1",
+  "version": "1.7.1",
   "description": "Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF.",
   "author": "Samon Yu",
   "license": "MIT-0",
