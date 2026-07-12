@@ -98,21 +98,23 @@ The skill will:
 
 ### Manual rendering
 
-You can also render `.puml` files directly. The skill ships with both a Bash and a PowerShell entry point, so it works on **Linux, macOS, and Windows**:
+You can also render `.puml` files directly. The skill ships with a single
+unified Python render script that works on **Linux, macOS, and Windows**:
 
 **Linux / macOS / Git Bash / WSL:**
 
 ```bash
-bash skills/plantuml/scripts/generate-plantuml.sh input.puml output_dir --format svg
+python skills/plantuml/scripts/generate_plantuml.py input.puml output_dir --format svg
 ```
 
-**Windows PowerShell:**
+**Windows PowerShell / cmd:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 input.puml output_dir -Format svg
+python skills\plantuml\scripts\generate_plantuml.py input.puml output_dir --format svg
 ```
 
-Options: `--format svg|png|pdf|txt` (default: `svg`) — PowerShell uses `-Format` instead of `--format`.
+Options: `--format svg|png|pdf|txt` (default: `svg`). All flags use the same
+`--kebab-case` names on every OS.
 
 | Flag | Description | Default |
 |---|---|---|
@@ -545,20 +547,20 @@ skinparam SequenceActivationBackgroundColor #FFFFFF
 All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. Each has a companion `.dark.svg` that activates automatically on dark backgrounds. You can regenerate any single one:
 
 ```bash
-bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
+python skills/plantuml/scripts/generate_plantuml.py examples/01_sequence_oauth2.puml examples --format svg
 ```
 
 Or regenerate all of them at once:
 
 ```bash
 # Bash
-for f in examples/*.puml; do bash skills/plantuml/scripts/generate-plantuml.sh "$f" examples --format svg; done
+for f in examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" examples --format svg; done
 ```
 
 ```powershell
 # PowerShell
 Get-ChildItem examples\*.puml | ForEach-Object {
-    powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 $_.FullName examples -Format svg
+    python skills\plantuml\scripts\generate_plantuml.py $_.FullName examples --format svg
 }
 ```
 
@@ -570,8 +572,7 @@ plantuml-skill/
 │   └── plantuml/                       # canonical skill (skills.sh discovery path)
 │       ├── SKILL.md                    # Skill definition & instructions
 │       └── scripts/
-│           ├── generate-plantuml.sh    # Render script — Linux/macOS/Git-Bash/WSL
-│           └── generate-plantuml.ps1   # Render script — Windows PowerShell
+│           └── generate_plantuml.py    # Unified Python render script (Linux/macOS/Windows)
 ├── .opencode/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # backward-compat symlink for OpenCode project-skill auto-load
@@ -591,48 +592,46 @@ plantuml-skill/
 
 ## Render Script
 
-The skill ships with two equivalent entry points so it runs on every major OS:
+The skill ships with a single unified Python 3.8+ render script that runs
+identically on every major OS:
 
-- `skills/plantuml/scripts/generate-plantuml.sh` — Bash (Linux, macOS, Git Bash, MSYS2, WSL, Cygwin)
-- `skills/plantuml/scripts/generate-plantuml.ps1` — PowerShell (native Windows)
+- `skills/plantuml/scripts/generate_plantuml.py` — Linux, macOS, Windows (PowerShell / cmd), Git Bash, MSYS2, WSL, Cygwin
 
-Both try three backends in **strict priority order — local-first**.
+It tries three backends in **strict priority order — local-first**.
 Docker and the local JAR are tried first; the public server is **opt-in
 only** because it uploads diagram source to a third party:
 
 1. **Docker** (`plantuml/plantuml:latest`) — preferred default, fully local
 2. **Local JAR** (`plantuml.jar`) — offline fallback (requires Java)
 3. **Kroki public server** (`https://kroki.io` by default) —
-   **opt-in** via `--use-public-server` (Bash) / `-UsePublicServer`
-   (PowerShell). Override host with `PLANTUML_PUBLIC_SERVER=<url>` to
-   point at a self-hosted Kroki. See [Privacy](#privacy) before enabling.
+   **opt-in** via `--use-public-server`. Override host with
+   `PLANTUML_PUBLIC_SERVER=<url>` to point at a self-hosted Kroki.
+   See [Privacy](#privacy) before enabling.
 
 ```bash
-# SVG (default) — Bash
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output
+# SVG (default)
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output
 
-# PNG — Bash
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png
+# PNG
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format png
 
 # SVG with CJK font support
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --cjk
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --cjk
 
-# PNG, with custom aspect ratio threshold
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 1.4
+# PNG with custom aspect ratio threshold
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format png --max-aspect 1.4
 
-# ASCII art — Bash (txt format skips image rendering)
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format txt
+# ASCII art (txt format skips image rendering)
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format txt
 
 # Disable aspect ratio auto-correction
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --no-fix
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --no-fix
 ```
 
 ```powershell
-# SVG (default) — PowerShell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output
-
-# PNG — PowerShell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -Format png
+# Windows PowerShell / cmd — same flags, just backslashes in the path
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --format png
 ```
 
 ### CJK Font Support
@@ -664,13 +663,13 @@ The Kroki public server backend (`kroki.io` by default) is **disabled by default
 and only runs when you explicitly opt in:
 
 ```bash
-# Bash — explicit opt-in (uploads diagram source to kroki.io)
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+# Explicit opt-in (uploads diagram source to kroki.io) — Linux/macOS/WSL/Git Bash
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 ```powershell
-# PowerShell — explicit opt-in
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+# Windows PowerShell — explicit opt-in
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-public-server
 ```
 
 When opt-in is active, the script prints a runtime privacy warning identifying
@@ -686,13 +685,13 @@ of the public `kroki.io`, set `PLANTUML_PUBLIC_SERVER`:
 ```bash
 # Bash
 PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
-  bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+  python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 ```powershell
 # PowerShell
 $env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-public-server
 ```
 
 The runtime privacy warning surfaces the resolved host so you can confirm the

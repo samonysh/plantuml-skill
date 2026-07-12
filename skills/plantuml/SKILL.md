@@ -7,7 +7,7 @@ homepage: https://github.com/samonysh/plantuml-skill
 metadata:
   openclaw:
     # The render script is local-first: it tries Docker, then a local plantuml.jar.
-    # The Kroki public server is OPT-IN ONLY (--use-public-server / -UsePublicServer)
+    # The Kroki public server is OPT-IN ONLY (--use-public-server)
     # because it uploads diagram source to a third-party service (kroki.io by default,
     # overridable to a self-hosted Kroki via PLANTUML_PUBLIC_SERVER).
     requires:
@@ -50,7 +50,7 @@ No exceptions unless the user explicitly requests otherwise.
 - **No 3D effects**: Drop shadows MUST be disabled (`skinparam shadowing false`).
 - **Clean typography**: Sans-serif font (Helvetica, equivalent to the Arial used by Visio stencils on uml-diagrams.org), 12pt default. No colored or bold text except diagram titles. When CJK characters are present, use `--cjk` flag to switch to a CJK-compatible font (see [CJK Font Support](#cjk-chinesejapanesekorean-font-support)).
 - **Aspect ratio**: Generated diagrams are automatically validated for an aspect-ratio band. By default the renderer tries to keep width/height between **0.7 and 1.4** (a comfortable page-like shape), re-rendering with layout corrections when the output falls outside that band. Diagrams that cannot be fixed safely after a few attempts are kept with a warning, so unusual diagrams are not destroyed. Use `--no-fix` to disable this behavior (see Step 3).
-- **A4 paper fit**: After aspect-ratio validation passes, the diagram is checked against A4 paper (210×297 mm). At the **96 DPI CSS standard**, this works out to **794×1123 px portrait** and **1123×794 px landscape**. The renderer accepts the diagram if it fits in EITHER orientation; otherwise it injects a computed PlantUML `scale N` directive and re-renders up to once. The default body font of 12 px (from the mandatory preamble) shrinks proportionally; if the estimated on-paper font drops below `--min-font-pt` (default **8 pt**), the script prints a legibility warning — at that point no further down-scaling helps and the user must split the diagram or abbreviate labels. A4 fit is **ON by default**; disable with `--no-a4-check` (`-NoA4Check` on PowerShell).
+- **A4 paper fit**: After aspect-ratio validation passes, the diagram is checked against A4 paper (210×297 mm). At the **96 DPI CSS standard**, this works out to **794×1123 px portrait** and **1123×794 px landscape**. The renderer accepts the diagram if it fits in EITHER orientation; otherwise it injects a computed PlantUML `scale N` directive and re-renders up to once. The default body font of 12 px (from the mandatory preamble) shrinks proportionally; if the estimated on-paper font drops below `--min-font-pt` (default **8 pt**), the script prints a legibility warning — at that point no further down-scaling helps and the user must split the diagram or abbreviate labels. A4 fit is **ON by default**; disable with `--no-a4-check`.
 - **Standard UML shapes**:
   - Actors are **stick figures** (never Visio icons or images).
   - Classes / components / nodes are plain rectangles; activities are round-cornered rectangles with the activity name in the upper-left.
@@ -120,34 +120,39 @@ Save the PlantUML source to a `.puml` file in the working directory.
 
 ### Step 3: Render to Image
 
-Use the bundled conversion script. Pick the variant that matches the current OS / shell:
-
-**Linux, macOS, or Windows with a POSIX shell (Git Bash, MSYS2, WSL, Cygwin):**
+Use the bundled conversion script. It is a single, unified Python 3.8+ script
+that works identically on Linux, macOS, and Windows (native PowerShell, cmd,
+Git Bash, WSL — anywhere `python` is on PATH):
 
 ```bash
-bash skills/plantuml/scripts/generate-plantuml.sh <input.puml> <output_dir> --format <svg|png|pdf|txt>
+python skills/plantuml/scripts/generate_plantuml.py <input.puml> <output_dir> --format <svg|png|pdf|txt>
 ```
 
-**Windows native PowerShell (no bash required):**
+On Windows PowerShell / cmd the invocation is identical (use backslashes if
+you prefer):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 <input.puml> <output_dir> -Format <svg|png|pdf|txt>
+python skills\plantuml\scripts\generate_plantuml.py <input.puml> <output_dir> --format <svg|png|pdf|txt>
 ```
 
-Both scripts accept the same arguments and try three backends in **strict priority
-order — local-first**. Docker and the local JAR are tried first; the Kroki
-public server is **OPT-IN ONLY** because it uploads your diagram source to a
-third-party service (kroki.io by default):
+> **Historical note** — earlier versions shipped a `generate-plantuml.sh` /
+> `generate-plantuml.ps1` pair. Those have been consolidated into this single
+> Python script. All flags use the same `--kebab-case` names on every OS; the
+> previous PowerShell-style `-CamelCase` flag names are no longer used.
+
+The script tries three backends in **strict priority order — local-first**.
+Docker and the local JAR are tried first; the Kroki public server is
+**OPT-IN ONLY** because it uploads your diagram source to a third-party
+service (kroki.io by default):
 
 1. **Docker** (`plantuml/plantuml:latest`) — preferred default, fully local
 2. **Local `plantuml.jar`** (requires Java) — offline fallback
 3. **Kroki public server** (https://kroki.io by default) — **OPT-IN**
-   via `--use-public-server` (Bash) or `-UsePublicServer` (PowerShell).
-   Override the host with `PLANTUML_PUBLIC_SERVER=<url>` (Bash) or
-   `$env:PLANTUML_PUBLIC_SERVER='<url>'` (PowerShell) to point at a
+   via `--use-public-server`. Override the host with the
+   `PLANTUML_PUBLIC_SERVER=<url>` environment variable to point at a
    self-hosted Kroki instance.
 
-> ⚠ **Privacy notice** — passing `--use-public-server` / `-UsePublicServer`
+> ⚠ **Privacy notice** — passing `--use-public-server`
 > POSTs the entire `.puml` source to `kroki.io` (or your override host).
 > **Never** enable this flag for diagrams containing confidential architecture,
 > credentials, customer data, or proprietary business logic. When in doubt,
@@ -158,7 +163,7 @@ third-party service (kroki.io by default):
 **CJK font support**: When the `.puml` contains Chinese, Japanese, or Korean characters, add the `--cjk` flag:
 
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --format svg --cjk
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format svg --cjk
 ```
 
 The `--cjk` flag:
@@ -181,18 +186,18 @@ Spacing guards added during auto-fix include `Padding`, `BoxPadding`, `Participa
 
 To disable automatic correction:
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --no-fix
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --no-fix
 ```
 
 To set a custom band:
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --min-aspect 0.6 --max-aspect 1.5
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --min-aspect 0.6 --max-aspect 1.5
 ```
 
-**Dark mode (opt-in)**: The default output follows the strict uml-diagrams.org black-and-white style. When the user explicitly asks for a dark variant, add `--dark-mode` (Bash) or `-DarkMode` (PowerShell). This emits **both** the regular light output and a dark companion named `<basename>.dark.<fmt>`:
+**Dark mode (opt-in)**: The default output follows the strict uml-diagrams.org black-and-white style. When the user explicitly asks for a dark variant, add `--dark-mode`. This emits **both** the regular light output and a dark companion named `<basename>.dark.<fmt>`:
 
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --format svg --dark-mode
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format svg --dark-mode
 ```
 
 Behaviour:
@@ -212,33 +217,30 @@ Behaviour:
 
 Flags:
 
-| Flag (Bash) | Flag (PowerShell) | Purpose | Default |
-|---|---|---|---|
-| `--no-fix` | `-NoFix` | Disable automatic aspect-ratio correction | off (correction ON) |
-| `--min-aspect N` | `-MinAspect N` | Lower bound of acceptable width/height band | `0.7` |
-| `--max-aspect N` | `-MaxAspect N` | Upper bound of acceptable width/height band | `1.4` |
-| `--no-a4-check` | `-NoA4Check` | Disable A4 fit validation entirely | off (check ON) |
-| `--min-font-pt N` | `-MinFontPt N` | Minimum legible on-paper font size in pt | `8.0` |
-| `--dark-mode` | `-DarkMode` | Also emit a dark companion (`<basename>.dark.<fmt>`) with CSS `@media` theme | off |
+| Flag | Purpose | Default |
+|---|---|---|
+| `--no-fix` | Disable automatic aspect-ratio correction | off (correction ON) |
+| `--min-aspect N` | Lower bound of acceptable width/height band | `0.7` |
+| `--max-aspect N` | Upper bound of acceptable width/height band | `1.4` |
+| `--no-a4-check` | Disable A4 fit validation entirely | off (check ON) |
+| `--min-font-pt N` | Minimum legible on-paper font size in pt | `8.0` |
+| `--dark-mode` | Also emit a dark companion (`<basename>.dark.<fmt>`) with CSS `@media` theme | off |
 
 Examples:
 ```bash
 # Disable A4 fit
-bash generate-plantuml.sh diagram.puml ./output --no-a4-check
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --no-a4-check
 
 # Tighten legibility threshold (warn if effective font drops below 10 pt)
-bash generate-plantuml.sh diagram.puml ./output --min-font-pt 10
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --min-font-pt 10
 
 # Allow narrower diagrams and also emit a dark SVG companion
-bash generate-plantuml.sh diagram.puml ./output --format svg --min-aspect 0.5 --dark-mode
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format svg --min-aspect 0.5 --dark-mode
 ```
 
-```powershell
-# PowerShell equivalents
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -NoA4Check
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -MinFontPt 10
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\out -Format svg -MinAspect 0.5 -DarkMode
-```
+On Windows the same commands work verbatim in PowerShell / cmd — just swap
+forward slashes for backslashes if you prefer native path style. There is no
+longer a separate PowerShell flag namespace.
 
 A4 fit is skipped automatically for `txt` and `pdf` output (TXT has no image dimensions; PDF is already a print-oriented format the PlantUML renderer pages itself). The check shares the same 3-attempt auto-fix budget as aspect-ratio correction — running both does not double the cap.
 
@@ -268,13 +270,8 @@ local installation, but doing so **POSTs the full `.puml` source to a third
 party**. To use it you must explicitly opt in:
 
 ```bash
-# Bash — explicit opt-in required
-bash generate-plantuml.sh diagram.puml ./output --use-public-server
-```
-
-```powershell
-# PowerShell — explicit opt-in required
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+# Explicit opt-in required (same flag on every OS)
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 When opt-in is active, the script:
@@ -291,15 +288,15 @@ opt-in traffic to your own instance instead of the public `kroki.io`, set the
 `PLANTUML_PUBLIC_SERVER` env var to your base URL:
 
 ```bash
-# Bash
+# Linux / macOS / Git Bash / WSL
 PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
-  bash generate-plantuml.sh diagram.puml ./output --use-public-server
+  python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 ```powershell
-# PowerShell
+# Windows PowerShell
 $env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
-powershell -ExecutionPolicy Bypass -File generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-public-server
 ```
 
 The runtime privacy warning surfaces the resolved host name so you can confirm
@@ -339,7 +336,7 @@ download `plantuml.jar` and render locally.
 
 ### CJK Docker mode and host font directories
 
-When `--cjk` / `-Cjk` is combined with the Docker backend, the script mounts
+When `--cjk` is combined with the Docker backend, the script mounts
 host font directories **read-only** into the container so PlantUML can
 discover system-installed CJK fonts. The mounts are:
 
@@ -934,7 +931,7 @@ skinparam defaultFontName "WenQuanYi Micro Hei"
 
 **When rendering**: Use the `--cjk` flag, which automatically applies the font substitution and configures Docker font mounting if needed:
 ```bash
-bash generate-plantuml.sh diagram.puml ./output --cjk
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --cjk
 ```
 
 **Host prerequisites** for CJK rendering:
@@ -959,7 +956,7 @@ If the PlantUML server returns an error:
 1. Check for syntax errors in the `.puml` file
 2. Validate that `@startuml` / `@enduml` are properly paired
 3. Ensure diagram-type-specific syntax is correct (e.g., `@startmindmap` for mind maps)
-4. Try the Docker fallback: `docker pull plantuml/plantuml:latest && bash generate-plantuml.sh ...`
+4. Try the Docker fallback: `docker pull plantuml/plantuml:latest && python skills/plantuml/scripts/generate_plantuml.py ...`
 5. If all else fails, offer to install Java + plantuml.jar
 
 If CJK characters render as empty boxes (□):
@@ -981,7 +978,7 @@ If A4 fit warnings appear (the script prints `📄 A4 fit: ... exceeds A4 ...`):
    - Split the diagram at a natural boundary (per use case, per subsystem, per actor).
    - Shorten long labels — e.g. replace `client_id, redirect_uri` with shortened param names.
    - For sequence diagrams with many participants: group messages into sub-diagrams, or abbreviate participant display names.
-3. If you do not need A4 conformance for the current output, re-run with `--no-a4-check` (`-NoA4Check`) to keep the larger original.
+3. If you do not need A4 conformance for the current output, re-run with `--no-a4-check` to keep the larger original.
 4. To let the diagram stretch across multiple A4 sheets, set `--min-font-pt 6` (or lower) and accept reduced legibility — the script will warn but still emit the smaller-than-A4 final image.
 
 ---

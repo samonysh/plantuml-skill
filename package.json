@@ -23,8 +23,7 @@
     ".opencode/skills/plantuml"
   ],
   "scripts": {
-    "render": "bash skills/plantuml/scripts/generate-plantuml.sh",
-    "render:ps": "powershell -ExecutionPolicy Bypass -File skills/plantuml/scripts/generate-plantuml.ps1"
+    "render": "python skills/plantuml/scripts/generate_plantuml.py"
   },
   "engines": {
     "opencode": ">=1.0.0"

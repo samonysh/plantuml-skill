@@ -16,7 +16,7 @@
 - **自然语言驱动**：你只需描述需求 —— skill 会自动挑选合适的图表类型
 - **uml-diagrams.org 参考风格**：纯黑白、虚线生命线、白色激活条、文本 stereotype —— 与 https://www.uml-diagrams.org 上的每一张图视觉一致
 - **两套等价 preamble**：经典 `skinparam`（向后兼容性最强）与现代 CSS `<style>` 块（推荐用于 PlantUML ≥ 1.2019.9）
-- **跨平台渲染脚本**：Bash（Linux/macOS/Git-Bash/WSL）与 PowerShell（Windows 原生）双入口
+- **跨平台渲染脚本**：统一的 Python 3.8+ 脚本，可在 Linux/macOS/Windows（PowerShell、cmd、Git Bash、WSL）上一致运行
 - **本地优先渲染**：Docker → 本地 JAR → 公网服务器（公网为**显式启用**，详见 [隐私](#隐私说明)）
 - **文本 stereotype**：使用 `«interface»` / `«abstract»` 文本，不用带字母的彩色圆圈图标
 - **零配色**：纯黑白输出，适合学术论文、RFC、技术文档等场景
@@ -92,21 +92,21 @@ skill 会自动：
 
 ### 手动渲染
 
-你也可以直接渲染 `.puml` 源文件。skill 同时提供 Bash 和 PowerShell 两个入口脚本，**可在 Linux、macOS、Windows 上原生运行**：
+你也可以直接渲染 `.puml` 源文件。skill 提供了一个统一的 Python 渲染脚本，**可在 Linux、macOS、Windows 上原生运行**：
 
 **Linux / macOS / Git Bash / WSL：**
 
 ```bash
-bash skills/plantuml/scripts/generate-plantuml.sh input.puml output_dir --format svg
+python skills/plantuml/scripts/generate_plantuml.py input.puml output_dir --format svg
 ```
 
-**Windows PowerShell：**
+**Windows PowerShell / cmd：**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 input.puml output_dir -Format svg
+python skills\plantuml\scripts\generate_plantuml.py input.puml output_dir --format svg
 ```
 
-参数：`--format svg|png|pdf|txt`（默认 `svg`）— PowerShell 版本用 `-Format`，效果完全等价。
+参数：`--format svg|png|pdf|txt`（默认 `svg`）。所有平台使用统一的 `--kebab-case` 参数名。
 
 | 参数 | 说明 | 默认值 |
 |---|---|---|
@@ -535,20 +535,20 @@ skinparam SequenceActivationBackgroundColor #FFFFFF
 所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。每个图表都有配套的 `.dark.svg`，在暗色背景下自动激活。可以单独重新渲染某一个：
 
 ```bash
-bash skills/plantuml/scripts/generate-plantuml.sh examples/01_sequence_oauth2.puml examples --format svg
+python skills/plantuml/scripts/generate_plantuml.py examples/01_sequence_oauth2.puml examples --format svg
 ```
 
 也可以一次性重渲全部示例：
 
 ```bash
 # Bash
-for f in examples/*.puml; do bash skills/plantuml/scripts/generate-plantuml.sh "$f" examples --format svg; done
+for f in examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" examples --format svg; done
 ```
 
 ```powershell
 # PowerShell
 Get-ChildItem examples\*.puml | ForEach-Object {
-    powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 $_.FullName examples -Format svg
+    python skills\plantuml\scripts\generate_plantuml.py $_.FullName examples --format svg
 }
 ```
 
@@ -560,8 +560,7 @@ plantuml-skill/
 │   └── plantuml/                       # 规范 skill（skills.sh 发现路径）
 │       ├── SKILL.md                    # Skill 定义与详细说明
 │       └── scripts/
-│           ├── generate-plantuml.sh    # 渲染脚本 — Linux/macOS/Git-Bash/WSL
-│           └── generate-plantuml.ps1   # 渲染脚本 — Windows PowerShell
+│           └── generate_plantuml.py    # 统一 Python 渲染脚本（Linux/macOS/Windows）
 ├── .opencode/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # 向后兼容符号链接
@@ -581,44 +580,41 @@ plantuml-skill/
 
 ## 渲染脚本
 
-skill 内置两套等价入口，覆盖所有主流操作系统：
+skill 内置一个统一的 Python 3.8+ 渲染脚本，覆盖所有主流操作系统：
 
-- `skills/plantuml/scripts/generate-plantuml.sh` — Bash（Linux、macOS、Git Bash、MSYS2、WSL、Cygwin）
-- `skills/plantuml/scripts/generate-plantuml.ps1` — PowerShell（Windows 原生）
+- `skills/plantuml/scripts/generate_plantuml.py` — Linux、macOS、Windows（PowerShell / cmd）、Git Bash、MSYS2、WSL、Cygwin
 
-两者都按 **严格优先级顺序 —— 本地优先** 尝试三种后端。Docker 与本地 JAR 优先尝试；
+它按 **严格优先级顺序 —— 本地优先** 尝试三种后端。Docker 与本地 JAR 优先尝试；
 公网服务器仅在用户**显式启用**时才使用，因为它会把图源上传至第三方（默认 kroki.io）：
 
 1. **Docker**（`plantuml/plantuml:latest`）—— 默认首选，完全本地渲染
 2. **本地 JAR**（`plantuml.jar`）—— 离线回退（需 Java）
 3. **Kroki 公网服务器**（默认 `https://kroki.io`）—— **需显式启用**：
-   Bash 加 `--use-public-server`，PowerShell 加 `-UsePublicServer`。可通过
+   加 `--use-public-server`。可通过
    `PLANTUML_PUBLIC_SERVER=<url>` 覆盖至自托管 Kroki 实例。启用前请阅读
    [隐私说明](#隐私说明)。
 
 ```bash
-# SVG（默认）— Bash
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output
+# SVG（默认）
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output
 
 # SVG + CJK 字体支持
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --cjk
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --cjk
 
 # PNG + 自定义宽高比阈值
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format png --max-aspect 1.4
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format png --max-aspect 1.4
 
-# ASCII 文本图 — Bash（txt 格式跳过图片渲染）
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --format txt
+# ASCII 文本图（txt 格式跳过图片渲染）
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --format txt
 
 # 禁用宽高比自动修正
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --no-fix
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --no-fix
 ```
 
 ```powershell
-# SVG（默认）— PowerShell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output
-
-# PNG — PowerShell
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -Format png
+# Windows PowerShell / cmd（参数完全一致，仅路径分隔符不同）
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --format png
 ```
 
 ### CJK 字体支持
@@ -648,13 +644,13 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 Kroki 公网服务器后端（默认 `kroki.io`）**默认关闭**，仅在你显式启用时才会调用：
 
 ```bash
-# Bash —— 显式启用（会把图源上传至 kroki.io）
-bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+# 显式启用（会把图源上传至 kroki.io），Linux/macOS/WSL/Git Bash
+python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 ```powershell
-# PowerShell —— 显式启用
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+# Windows PowerShell —— 显式启用
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-public-server
 ```
 
 启用后，脚本会先打印一条运行时隐私警告（包含目的地 URL 与运营方信息），然后把
@@ -670,13 +666,13 @@ powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantu
 ```bash
 # Bash
 PLANTUML_PUBLIC_SERVER=https://kroki.internal.example.com \
-  bash skills/plantuml/scripts/generate-plantuml.sh diagram.puml ./output --use-public-server
+  python skills/plantuml/scripts/generate_plantuml.py diagram.puml ./output --use-public-server
 ```
 
 ```powershell
 # PowerShell
 $env:PLANTUML_PUBLIC_SERVER = 'https://kroki.internal.example.com'
-powershell -ExecutionPolicy Bypass -File skills\plantuml\scripts\generate-plantuml.ps1 diagram.puml .\output -UsePublicServer
+python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-public-server
 ```
 
 运行时隐私警告会显示解析后的目标主机，便于上传前确认流向。自定义主机需要暴露
