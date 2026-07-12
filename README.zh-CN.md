@@ -678,7 +678,7 @@ python skills\plantuml\scripts\generate_plantuml.py diagram.puml .\output --use-
 运行时隐私警告会显示解析后的目标主机，便于上传前确认流向。自定义主机需要暴露
 标准的 Kroki 端点形式：`<base>/plantuml/<format>`。
 
-### 为什么是 Kroki（v1.6.0）
+### 为什么是 Kroki（v1.7.2）
 
 早期版本的脚本使用 `https://www.plantuml.com/plantuml`。该端点目前位于
 Cloudflare + Ezoic 同意墙之后（POST 会被 302 重定向到一个纯 JavaScript 渲染的

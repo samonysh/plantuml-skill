@@ -322,14 +322,16 @@ def bump_version_refs(version: str, dry_run: bool) -> None:
                lambda s: re.sub(badge_re, f"version-v{version}-blue", s),
                "README.zh-CN.md badge")
 
-    # "Why Kroki (vX.Y.Z)" section headers
-    kroki_re = r"Why Kroki \(v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?\)"
+    # "Why Kroki (vX.Y.Z)" section headers — English uses half-width parens,
+    # Chinese uses "为什么是 Kroki（vX.Y.Z）" with full-width parens.
+    en_kroki_re = r"Why Kroki \(v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?\)"
+    zh_kroki_re = r"为什么是 Kroki（v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?）"
     _bump_file(README_MD,
-               lambda s: re.sub(kroki_re, f"Why Kroki (v{version})", s),
+               lambda s: re.sub(en_kroki_re, f"Why Kroki (v{version})", s),
                "README.md Why Kroki header")
     _bump_file(README_ZH,
-               lambda s: re.sub(kroki_re, f"Why Kroki (v{version})", s),
-               "README.zh-CN.md Why Kroki header")
+               lambda s: re.sub(zh_kroki_re, f"为什么是 Kroki（v{version}）", s),
+               "README.zh-CN.md 为什么是 Kroki 标题")
 
 
 # ---------------------------------------------------------------------------
