@@ -1,0 +1,31 @@
+# 默认让 Git 自动检测文本/二进制，避免误伤未列出的文件类型。
+* text=auto
+
+# POSIX 端文本文件强制 LF（Python 脚本、Shell、文档、配置、示例源）。
+*.py       text eol=lf
+*.sh       text eol=lf
+*.md       text eol=lf
+*.json     text eol=lf
+*.yaml     text eol=lf
+*.yml      text eol=lf
+*.puml     text eol=lf
+*.svg      text eol=lf
+*.example  text eol=lf
+LICENSE    text eol=lf
+
+# Windows 原生脚本保留 CRLF，避免 PowerShell / cmd 执行异常。
+*.ps1      text eol=crlf
+*.cmd      text eol=crlf
+*.bat      text eol=crlf
+
+# 二进制资产：Git 不做行尾/编码转换。
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.pdf      binary
+*.jar      binary
+*.tar      binary
+*.tar.gz   binary
+*.tgz      binary
+*.zip      binary
