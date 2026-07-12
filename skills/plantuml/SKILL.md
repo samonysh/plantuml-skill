@@ -1,7 +1,7 @@
 ---
 name: plantuml
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
-version: 1.7.1
+version: 1.7.2
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
