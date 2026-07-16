@@ -219,12 +219,12 @@ Every example below shows:
 **Demonstrates**: actors + participants, dashed lifelines, white activation bars, synchronous (`->`) vs return (`-->`) arrows, self-calls, and side notes — all in strict uml-diagrams.org monochrome.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
-  <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/01_sequence_oauth2_css.dark.svg">
+  <img alt="OAuth2 Sequence" src="skills/plantuml/assets/examples/01_sequence_oauth2_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/01_sequence_oauth2_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/01_sequence_oauth2_css.puml</code></summary>
 
 ```plantuml
 @startuml
@@ -265,12 +265,12 @@ end note
 **Demonstrates**: attributes with `+`/`-` visibility markers (no colored dots), methods with return types, `enum` blocks, association multiplicities (`"1" -- "*"`, `"1" -- "0..1"`), and rounded-corner-free strict OMG boxes.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
-  <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/02_class_order_domain_css.dark.svg">
+  <img alt="Order Domain" src="skills/plantuml/assets/examples/02_class_order_domain_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/02_class_order_domain_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/02_class_order_domain_css.puml</code></summary>
 
 ```plantuml
 class Customer {
@@ -314,12 +314,12 @@ Order    "1" -- "0..1" Shipment : shipped via
 **Demonstrates**: swimlanes (`|Customer|`, `|System|`, …), `start`/`stop` markers, nested `if`/`else` branches, and cross-lane hand-offs — the go-to notation for approval pipelines.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
-  <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/03_activity_refund_css.dark.svg">
+  <img alt="Refund Workflow" src="skills/plantuml/assets/examples/03_activity_refund_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/03_activity_refund_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/03_activity_refund_css.puml</code></summary>
 
 ```plantuml
 |Customer|
@@ -362,12 +362,12 @@ stop
 **Demonstrates**: stick-figure actors, `usecase` ellipses inside a system `rectangle`, `<<include>>` and `<<extend>>` dashed dependencies, plus `left to right direction` for compact horizontal layout.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
-  <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/04_usecase_cms_css.dark.svg">
+  <img alt="CMS Use Case" src="skills/plantuml/assets/examples/04_usecase_cms_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/04_usecase_cms_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/04_usecase_cms_css.puml</code></summary>
 
 ```plantuml
 left to right direction
@@ -407,12 +407,12 @@ UC9 ..> UC10 : <<extend>>
 **Demonstrates**: `package` grouping, `[Component]` boxes, `database` / `cloud` infrastructure nodes, labeled dependencies (`processPayment()`, `reserveStock()`), and inbound actors — enough surface area to stress-test aspect-ratio auto-correction and A4-fit checks.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
-  <img alt="Microservices" src="examples/05_component_microservices_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/05_component_microservices_css.dark.svg">
+  <img alt="Microservices" src="skills/plantuml/assets/examples/05_component_microservices_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/05_component_microservices_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/05_component_microservices_css.puml</code></summary>
 
 ```plantuml
 actor Customer
@@ -462,12 +462,12 @@ Customer --> [Router]
 **Demonstrates**: initial (`[*] -->`) and final (`--> [*]`) pseudo-states, transitions with trigger labels, a **composite (nested) state** with its own internal state machine, and an anchored side note documenting the auto-resolve rule.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
-  <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/06_state_ticket_css.dark.svg">
+  <img alt="Ticket States" src="skills/plantuml/assets/examples/06_state_ticket_css.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/06_state_ticket_css.puml</code></summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/06_state_ticket_css.puml</code></summary>
 
 ```plantuml
 [*] --> New
@@ -514,12 +514,12 @@ end note
 **Demonstrates**: the identical business scenario as example #1, rendered with the classic `skinparam` preamble instead of the CSS `<style>` block. Compare the two side-by-side to confirm both preambles produce a visually identical uml-diagrams.org look.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
-  <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/01_sequence_oauth2.dark.svg">
+  <img alt="OAuth2 Sequence — skinparam variant" src="skills/plantuml/assets/examples/01_sequence_oauth2.svg">
 </picture>
 
 <details>
-<summary>Source snippet — <code>examples/01_sequence_oauth2.puml</code> (skinparam preamble)</summary>
+<summary>Source snippet — <code>skills/plantuml/assets/examples/01_sequence_oauth2.puml</code> (skinparam preamble)</summary>
 
 ```plantuml
 @startuml
@@ -544,23 +544,23 @@ skinparam SequenceActivationBackgroundColor #FFFFFF
 
 ---
 
-All example source files (`.puml`) are in the [`examples/`](examples/) directory. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. Each has a companion `.dark.svg` that activates automatically on dark backgrounds. You can regenerate any single one:
+All example source files (`.puml`) are in the [`examples/`](skills/plantuml/assets/examples/) directory under `skills/plantuml/assets/`. CSS versions use the recommended `<style>` block; skinparam versions are available for backward compatibility. Each has a companion `.dark.svg` that activates automatically on dark backgrounds. You can regenerate any single one:
 
 ```bash
-python skills/plantuml/scripts/generate_plantuml.py examples/01_sequence_oauth2.puml examples --format svg
+python skills/plantuml/scripts/generate_plantuml.py skills/plantuml/assets/examples/01_sequence_oauth2.puml skills/plantuml/assets/examples --format svg
 ```
 
 Or regenerate all of them at once:
 
 ```bash
 # Bash
-for f in examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" examples --format svg; done
+for f in skills/plantuml/assets/examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" skills/plantuml/assets/examples --format svg; done
 ```
 
 ```powershell
 # PowerShell
-Get-ChildItem examples\*.puml | ForEach-Object {
-    python skills\plantuml\scripts\generate_plantuml.py $_.FullName examples --format svg
+Get-ChildItem skills\plantuml\assets\examples\*.puml | ForEach-Object {
+    python skills\plantuml\scripts\generate_plantuml.py $_.FullName skills/plantuml/assets/examples --format svg
 }
 ```
 
@@ -571,20 +571,21 @@ plantuml-skill/
 ├── skills/
 │   └── plantuml/                       # canonical skill (skills.sh discovery path)
 │       ├── SKILL.md                    # Skill definition & instructions
-│       └── scripts/
-│           └── generate_plantuml.py    # Unified Python render script (Linux/macOS/Windows)
+│       ├── scripts/
+│       │   └── generate_plantuml.py    # Unified Python render script (Linux/macOS/Windows)
+│       └── assets/
+│           └── examples/               # example .puml sources + rendered .svg / .dark.svg
+│               ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam preamble (backward-compatible)
+│               ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS preamble (recommended)
+│               ├── 02_class_order_domain_css.puml / .svg / .dark.svg
+│               ├── 03_activity_refund_css.puml / .svg / .dark.svg
+│               ├── 04_usecase_cms_css.puml / .svg / .dark.svg
+│               ├── 05_component_microservices_css.puml / .svg / .dark.svg
+│               ├── 06_state_ticket_css.puml / .svg / .dark.svg
+│               └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # legacy alias of 01_css (same OAuth2 sequence diagram)
 ├── .opencode/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # backward-compat symlink for OpenCode project-skill auto-load
-├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam preamble (backward-compatible)
-│   ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS preamble (recommended)
-│   ├── 02_class_order_domain_css.puml / .svg / .dark.svg
-│   ├── 03_activity_refund_css.puml / .svg / .dark.svg
-│   ├── 04_usecase_cms_css.puml / .svg / .dark.svg
-│   ├── 05_component_microservices_css.puml / .svg / .dark.svg
-│   ├── 06_state_ticket_css.puml / .svg / .dark.svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # legacy alias of 01_css (same OAuth2 sequence diagram)
 ├── .gitignore
 ├── README.md           # English README
 └── README.zh-CN.md     # 简体中文 README

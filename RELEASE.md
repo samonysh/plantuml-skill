@@ -69,7 +69,7 @@ python scripts/release.py 1.7.1 --skip-clawhub
 ### 2. `build`
 
 - Builds `dist/plantuml-skill-v<version>.tar.gz`
-- Includes `skills/plantuml/`, `examples/*.puml`, `examples/*.svg`, `README.md`,
+- Includes `skills/plantuml/` (incl. `assets/examples/`), `README.md`,
   `README.zh-CN.md`, `LICENSE`
 - Honors `.clawhubignore` and additionally excludes `.git/`, `node_modules/`,
   `output/`, `dist/`, `plantuml.jar`, `.omo/`, editor swap files, `.DS_Store`,

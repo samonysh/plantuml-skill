@@ -385,14 +385,11 @@ def step_build(version: str, dry_run: bool) -> Path:
         return archive_path
 
     # Collect paths to include (matching legacy release.sh behavior)
+    # The examples live under skills/plantuml/assets/examples/ now, so they
+    # are already pulled in via SKILL_DIR and no longer need a separate entry.
     include_paths: list[Path] = []
     if SKILL_DIR.exists():
         include_paths.append(SKILL_DIR)
-    examples_dir = REPO_ROOT / "examples"
-    if examples_dir.exists():
-        for p in sorted(examples_dir.iterdir()):
-            if p.suffix in {".puml", ".svg"}:
-                include_paths.append(p)
     for f in (README_MD, README_ZH, REPO_ROOT / "LICENSE"):
         if f.exists():
             include_paths.append(f)

@@ -208,12 +208,12 @@ SVG 仍是单文件 —— 无 JavaScript、无外部样式表。当查看者的
 **示例要点**：actor（棒人）+ participant 混用、虚线生命线、白色激活条、同步调用（`->`）与异步返回（`-->`）箭头、自调用以及侧边 note —— 全部使用 uml-diagrams.org 严格单色风格。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2_css.dark.svg">
-  <img alt="OAuth2 Sequence" src="examples/01_sequence_oauth2_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/01_sequence_oauth2_css.dark.svg">
+  <img alt="OAuth2 Sequence" src="skills/plantuml/assets/examples/01_sequence_oauth2_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/01_sequence_oauth2_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/01_sequence_oauth2_css.puml</code></summary>
 
 ```plantuml
 @startuml
@@ -254,12 +254,12 @@ end note
 **示例要点**：使用 `+`/`-` 文本可见性标记（不使用彩色圆点）、方法带返回类型、`enum` 枚举块、关联多重性（`"1" -- "*"`、`"1" -- "0..1"`）、以及无圆角的严格 OMG 矩形框。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/02_class_order_domain_css.dark.svg">
-  <img alt="Order Domain" src="examples/02_class_order_domain_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/02_class_order_domain_css.dark.svg">
+  <img alt="Order Domain" src="skills/plantuml/assets/examples/02_class_order_domain_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/02_class_order_domain_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/02_class_order_domain_css.puml</code></summary>
 
 ```plantuml
 class Customer {
@@ -303,12 +303,12 @@ Order    "1" -- "0..1" Shipment : shipped via
 **示例要点**：泳道语法（`|客户|`、`|系统|`…）、`start` / `stop` 起止标记、多层嵌套的 `if`/`else` 判断、跨泳道流转 —— 是审批与流水线场景的首选表达。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/03_activity_refund_css.dark.svg">
-  <img alt="Refund Workflow" src="examples/03_activity_refund_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/03_activity_refund_css.dark.svg">
+  <img alt="Refund Workflow" src="skills/plantuml/assets/examples/03_activity_refund_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/03_activity_refund_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/03_activity_refund_css.puml</code></summary>
 
 ```plantuml
 |Customer|
@@ -351,12 +351,12 @@ stop
 **示例要点**：棒人 actor、系统边界 `rectangle` 内的 `usecase` 椭圆、`<<include>>` / `<<extend>>` 虚线依赖，以及使用 `left to right direction` 让整图横向紧凑排布。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/04_usecase_cms_css.dark.svg">
-  <img alt="CMS Use Case" src="examples/04_usecase_cms_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/04_usecase_cms_css.dark.svg">
+  <img alt="CMS Use Case" src="skills/plantuml/assets/examples/04_usecase_cms_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/04_usecase_cms_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/04_usecase_cms_css.puml</code></summary>
 
 ```plantuml
 left to right direction
@@ -396,12 +396,12 @@ UC9 ..> UC10 : <<extend>>
 **示例要点**：使用 `package` 分组、`[组件]` 方括号语法、`database` / `cloud` 表示基础设施节点、在依赖箭头上标注接口方法（`processPayment()`、`reserveStock()`），并接入外部 actor —— 复杂度足以触发宽高比自动修正与 A4 适配检查。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/05_component_microservices_css.dark.svg">
-  <img alt="Microservices" src="examples/05_component_microservices_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/05_component_microservices_css.dark.svg">
+  <img alt="Microservices" src="skills/plantuml/assets/examples/05_component_microservices_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/05_component_microservices_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/05_component_microservices_css.puml</code></summary>
 
 ```plantuml
 actor Customer
@@ -451,12 +451,12 @@ Customer --> [Router]
 **示例要点**：初始伪状态（`[*] -->`）与终止伪状态（`--> [*]`）、带触发条件的状态迁移、**复合（嵌套）状态**内嵌独立子状态机，以及用于说明超时规则的锚定 note。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/06_state_ticket_css.dark.svg">
-  <img alt="Ticket States" src="examples/06_state_ticket_css.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/06_state_ticket_css.dark.svg">
+  <img alt="Ticket States" src="skills/plantuml/assets/examples/06_state_ticket_css.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/06_state_ticket_css.puml</code></summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/06_state_ticket_css.puml</code></summary>
 
 ```plantuml
 [*] --> New
@@ -503,12 +503,12 @@ end note
 **示例要点**：与示例 #1 业务完全一致，仅将 CSS `<style>` 前言块替换为经典 `skinparam` 语法。两张图并列对比即可确认：两套 preamble 视觉效果完全相同，都是 uml-diagrams.org 风格。
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/01_sequence_oauth2.dark.svg">
-  <img alt="OAuth2 Sequence — skinparam variant" src="examples/01_sequence_oauth2.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="skills/plantuml/assets/examples/01_sequence_oauth2.dark.svg">
+  <img alt="OAuth2 Sequence — skinparam variant" src="skills/plantuml/assets/examples/01_sequence_oauth2.svg">
 </picture>
 
 <details>
-<summary>源码片段 —— <code>examples/01_sequence_oauth2.puml</code>（skinparam 前言）</summary>
+<summary>源码片段 —— <code>skills/plantuml/assets/examples/01_sequence_oauth2.puml</code>（skinparam 前言）</summary>
 
 ```plantuml
 @startuml
@@ -532,23 +532,23 @@ skinparam SequenceActivationBackgroundColor #FFFFFF
 
 ---
 
-所有示例源文件都在 [`examples/`](examples/) 目录下。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。每个图表都有配套的 `.dark.svg`，在暗色背景下自动激活。可以单独重新渲染某一个：
+所有示例源文件都在 [`examples/`](skills/plantuml/assets/examples/) 目录（位于 `skills/plantuml/assets/` 下）。CSS 版本使用推荐的 `<style>` 块；`skinparam` 版本供向后兼容使用。每个图表都有配套的 `.dark.svg`，在暗色背景下自动激活。可以单独重新渲染某一个：
 
 ```bash
-python skills/plantuml/scripts/generate_plantuml.py examples/01_sequence_oauth2.puml examples --format svg
+python skills/plantuml/scripts/generate_plantuml.py skills/plantuml/assets/examples/01_sequence_oauth2.puml skills/plantuml/assets/examples --format svg
 ```
 
 也可以一次性重渲全部示例：
 
 ```bash
 # Bash
-for f in examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" examples --format svg; done
+for f in skills/plantuml/assets/examples/*.puml; do python skills/plantuml/scripts/generate_plantuml.py "$f" skills/plantuml/assets/examples --format svg; done
 ```
 
 ```powershell
 # PowerShell
-Get-ChildItem examples\*.puml | ForEach-Object {
-    python skills\plantuml\scripts\generate_plantuml.py $_.FullName examples --format svg
+Get-ChildItem skills\plantuml\assets\examples\*.puml | ForEach-Object {
+    python skills\plantuml\scripts\generate_plantuml.py $_.FullName skills/plantuml/assets/examples --format svg
 }
 ```
 
@@ -559,20 +559,21 @@ plantuml-skill/
 ├── skills/
 │   └── plantuml/                       # 规范 skill（skills.sh 发现路径）
 │       ├── SKILL.md                    # Skill 定义与详细说明
-│       └── scripts/
-│           └── generate_plantuml.py    # 统一 Python 渲染脚本（Linux/macOS/Windows）
+│       ├── scripts/
+│       │   └── generate_plantuml.py    # 统一 Python 渲染脚本（Linux/macOS/Windows）
+│       └── assets/
+│           └── examples/               # 示例 .puml 源文件 + 渲染后的 .svg / .dark.svg
+│               ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam 前言（向后兼容）
+│               ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS 前言（推荐）
+│               ├── 02_class_order_domain_css.puml / .svg / .dark.svg
+│               ├── 03_activity_refund_css.puml / .svg / .dark.svg
+│               ├── 04_usecase_cms_css.puml / .svg / .dark.svg
+│               ├── 05_component_microservices_css.puml / .svg / .dark.svg
+│               ├── 06_state_ticket_css.puml / .svg / .dark.svg
+│               └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # 01_css 的旧版别名（同一 OAuth2 时序图）
 ├── .opencode/
 │   └── skills/
 │       └── plantuml -> ../../skills/plantuml   # 向后兼容符号链接
-├── examples/
-│   ├── 01_sequence_oauth2.puml / .svg / .dark.svg              # skinparam 前言（向后兼容）
-│   ├── 01_sequence_oauth2_css.puml / .svg / .dark.svg          # CSS 前言（推荐）
-│   ├── 02_class_order_domain_css.puml / .svg / .dark.svg
-│   ├── 03_activity_refund_css.puml / .svg / .dark.svg
-│   ├── 04_usecase_cms_css.puml / .svg / .dark.svg
-│   ├── 05_component_microservices_css.puml / .svg / .dark.svg
-│   ├── 06_state_ticket_css.puml / .svg / .dark.svg
-│   └── 07_sequence_oauth2_css_style.puml / .svg / .dark.svg    # 01_css 的旧版别名（同一 OAuth2 时序图）
 ├── .gitignore
 ├── README.md           # 英文 README
 └── README.zh-CN.md     # 中文 README（本文件）
