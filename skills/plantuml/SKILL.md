@@ -1,7 +1,11 @@
 ---
 name: plantuml
+slug: plantuml-skill
+displayName: PlantUML Diagram Generator
 description: Turn natural language into uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state…) and render to SVG/PNG/PDF. Use when the user asks to draw a UML diagram.
+summary: Generate professional uml-diagrams.org style PlantUML diagrams (sequence, class, activity, use case, component, state, etc.) from natural language and render to SVG/PNG/PDF with local-first rendering, CJK support, dark mode, and auto aspect-ratio correction.
 version: 1.7.2
+license: MIT-0
 emoji: "📐"
 homepage: https://github.com/samonysh/plantuml-skill
 metadata:
